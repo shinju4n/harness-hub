@@ -3,23 +3,34 @@ import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
 
+async function findMcpPath(claudeHome: string): Promise<{ filePath: string; data: Record<string, unknown> | null; mtime?: number }> {
+  // Try inside claudeHome first, then parent (project-level .claude/)
+  const inside = await readJsonFile<Record<string, unknown>>(path.join(claudeHome, ".mcp.json"));
+  if (inside.data) return { filePath: path.join(claudeHome, ".mcp.json"), data: inside.data, mtime: inside.mtime };
+
+  const parent = await readJsonFile<Record<string, unknown>>(path.join(path.dirname(claudeHome), ".mcp.json"));
+  if (parent.data) return { filePath: path.join(path.dirname(claudeHome), ".mcp.json"), data: parent.data, mtime: parent.mtime };
+
+  return { filePath: path.join(claudeHome, ".mcp.json"), data: null };
+}
+
 export async function GET(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
-  const result = await readJsonFile<{ mcpServers: Record<string, { command: string; args?: string[] }> }>(
-    path.join(claudeHome, ".mcp.json")
-  );
+  const { data, mtime } = await findMcpPath(claudeHome);
+  const mcpData = data as { mcpServers?: Record<string, { command: string; args?: string[] }> } | null;
   return NextResponse.json({
-    servers: result.data?.mcpServers ?? {},
-    mtime: result.mtime,
+    servers: mcpData?.mcpServers ?? {},
+    mtime,
   });
 }
 
 export async function PUT(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
-  const mcpPath = path.join(claudeHome, ".mcp.json");
   const { servers, mtime } = await request.json();
+  const { filePath } = await findMcpPath(claudeHome);
 
-  const result = await writeJsonFile(mcpPath, { mcpServers: servers }, mtime);
+  const current = await readJsonFile(filePath);
+  const result = await writeJsonFile(filePath, { mcpServers: servers }, current.mtime ?? mtime);
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }

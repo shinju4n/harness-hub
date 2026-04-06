@@ -171,9 +171,13 @@ async function readHooks(claudeHome: string) {
 
 async function readMcpServers(claudeHome: string) {
   const items: McpServerInfo[] = [];
-  const result = await readJsonFile<{
+  // Try .mcp.json inside claudeHome, then parent dir (project-level .claude/)
+  let result = await readJsonFile<{
     mcpServers: Record<string, { command: string; args?: string[] }>;
   }>(path.join(claudeHome, ".mcp.json"));
+  if (!result.data) {
+    result = await readJsonFile(path.join(path.dirname(claudeHome), ".mcp.json"));
+  }
   const servers = result.data?.mcpServers ?? {};
   for (const [name, config] of Object.entries(servers)) {
     items.push({ name, command: config.command, args: config.args ?? [] });
@@ -202,6 +206,10 @@ async function readRuleCount(claudeHome: string) {
 }
 
 async function readClaudeMdExists(claudeHome: string) {
-  const result = await readMarkdownFile(path.join(claudeHome, "CLAUDE.md"));
+  // Try CLAUDE.md inside claudeHome, then parent dir (project-level .claude/)
+  let result = await readMarkdownFile(path.join(claudeHome, "CLAUDE.md"));
+  if (!result.data) {
+    result = await readMarkdownFile(path.join(path.dirname(claudeHome), "CLAUDE.md"));
+  }
   return { exists: result.data !== null };
 }
