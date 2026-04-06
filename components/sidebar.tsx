@@ -59,7 +59,10 @@ function ProfileDropdown() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      // Don't close if clicking inside folder picker portal
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-folder-picker]")) return;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setDropdownOpen(false);
         setShowAddForm(false);
       }

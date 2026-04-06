@@ -32,7 +32,7 @@ export function FolderPicker({ onSelect, onClose }: FolderPickerProps) {
   if (!data) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center" data-folder-picker>
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-[500px] max-w-[90vw] max-h-[70vh] flex flex-col">
         {/* Header */}
