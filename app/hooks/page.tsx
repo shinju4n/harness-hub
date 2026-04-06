@@ -9,16 +9,31 @@ interface HookEntry {
 
 type HooksData = Record<string, HookEntry[]>;
 
+const EVENT_TYPES = [
+  "PreToolUse",
+  "PostToolUse",
+  "Notification",
+  "Stop",
+  "SubagentStop",
+];
+
 export default function HooksPage() {
   const [hooks, setHooks] = useState<HooksData>({});
   const [mtime, setMtime] = useState<number>(0);
+  const [creating, setCreating] = useState(false);
+  const [newEvent, setNewEvent] = useState(EVENT_TYPES[0]);
+  const [newMatcher, setNewMatcher] = useState("");
+  const [newCommand, setNewCommand] = useState("");
+  const [newTimeout, setNewTimeout] = useState("");
 
-  useEffect(() => {
+  const fetchHooks = () => {
     fetch("/api/hooks").then((r) => r.json()).then((d) => {
       setHooks(d.hooks);
       setMtime(d.mtime);
     });
-  }, []);
+  };
+
+  useEffect(() => { fetchHooks(); }, []);
 
   const events = Object.entries(hooks);
 
@@ -38,14 +53,115 @@ export default function HooksPage() {
     }
   };
 
+  const createHook = async () => {
+    if (!newCommand.trim()) return;
+    const updated = { ...hooks };
+    const entry: HookEntry = {
+      hooks: [{
+        type: "command",
+        command: newCommand.trim(),
+        ...(newTimeout ? { timeout: parseInt(newTimeout, 10) } : {}),
+      }],
+      ...(newMatcher.trim() ? { matcher: newMatcher.trim() } : {}),
+    };
+    if (!updated[newEvent]) updated[newEvent] = [];
+    updated[newEvent] = [...updated[newEvent], entry];
+    const res = await fetch("/api/hooks", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hooks: updated, mtime }),
+    });
+    if (res.ok) {
+      setCreating(false);
+      setNewCommand("");
+      setNewMatcher("");
+      setNewTimeout("");
+      fetchHooks();
+    }
+  };
+
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Hooks</h2>
-        <p className="mt-1 text-sm text-gray-500">{events.length} event types</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Hooks</h2>
+          <p className="mt-1 text-sm text-gray-500">{events.length} event types</p>
+        </div>
+        {!creating && (
+          <button
+            onClick={() => setCreating(true)}
+            className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            + New Hook
+          </button>
+        )}
       </div>
 
-      {events.length === 0 ? (
+      {creating && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-3">
+          <h3 className="text-sm font-medium text-gray-700">New Hook</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Event type</label>
+              <select
+                value={newEvent}
+                onChange={(e) => setNewEvent(e.target.value)}
+                className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+              >
+                {EVENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Matcher (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Bash"
+                value={newMatcher}
+                onChange={(e) => setNewMatcher(e.target.value)}
+                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Command</label>
+              <input
+                type="text"
+                placeholder="e.g. echo $CLAUDE_TOOL_NAME"
+                value={newCommand}
+                onChange={(e) => setNewCommand(e.target.value)}
+                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Timeout ms (optional)</label>
+              <input
+                type="number"
+                placeholder="e.g. 5000"
+                value={newTimeout}
+                onChange={(e) => setNewTimeout(e.target.value)}
+                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={createHook}
+              className="px-4 py-1.5 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => { setCreating(false); setNewCommand(""); setNewMatcher(""); setNewTimeout(""); }}
+              className="px-4 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {events.length === 0 && !creating ? (
         <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
           No hooks configured
         </div>

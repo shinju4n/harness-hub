@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHome } from "@/lib/claude-home";
 import { readMarkdownFile, readJsonFile } from "@/lib/file-ops";
-import { readdir, writeFile } from "fs/promises";
+import { readdir, writeFile, mkdir } from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
 
@@ -66,6 +66,35 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({ error: "Unknown tab" }, { status: 400 });
+}
+
+export async function POST(request: NextRequest) {
+  const claudeHome = getClaudeHome();
+  const { name, content } = await request.json();
+  if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  const dir = path.join(claudeHome, "agents");
+  await mkdir(dir, { recursive: true });
+  const filePath = path.join(dir, `${name}.md`);
+  try {
+    await writeFile(filePath, content ?? "", "utf-8");
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const claudeHome = getClaudeHome();
+  const name = request.nextUrl.searchParams.get("name");
+  if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  const filePath = path.join(claudeHome, "agents", `${name}.md`);
+  try {
+    const { unlink } = await import("fs/promises");
+    await unlink(filePath);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }
 
 export async function PUT(request: NextRequest) {

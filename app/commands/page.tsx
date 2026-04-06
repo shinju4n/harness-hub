@@ -8,10 +8,15 @@ interface CommandItem { name: string; fileName: string; }
 export default function CommandsPage() {
   const [commands, setCommands] = useState<CommandItem[]>([]);
   const [selected, setSelected] = useState<{ content: string; name: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newContent, setNewContent] = useState("");
 
-  useEffect(() => {
+  const fetchCommands = () => {
     fetch("/api/commands").then((r) => r.json()).then((d) => setCommands(d.items));
-  }, []);
+  };
+
+  useEffect(() => { fetchCommands(); }, []);
 
   const viewCommand = async (name: string) => {
     const res = await fetch(`/api/commands?name=${name}`);
@@ -31,22 +36,93 @@ export default function CommandsPage() {
     setSelected({ ...selected, content });
   };
 
+  const createCommand = async () => {
+    if (!newName.trim()) return;
+    const res = await fetch("/api/commands", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), content: newContent }),
+    });
+    if (res.ok) {
+      setCreating(false);
+      setNewName("");
+      setNewContent("");
+      fetchCommands();
+    }
+  };
+
+  const deleteCommand = async (name: string) => {
+    if (!window.confirm(`Delete command "${name}"?`)) return;
+    const res = await fetch(`/api/commands?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (res.ok) {
+      if (selected?.name === name) setSelected(null);
+      fetchCommands();
+    }
+  };
+
   const commandList = (
     <div className="space-y-0.5">
       {commands.map((cmd) => (
-        <button
-          key={cmd.name}
-          onClick={() => viewCommand(cmd.name)}
-          className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-mono transition-all ${
-            selected?.name === cmd.name
-              ? "bg-amber-50 text-amber-800 font-medium"
-              : "text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          /{cmd.name}
-        </button>
+        <div key={cmd.name} className="flex items-center gap-1 group">
+          <button
+            onClick={() => viewCommand(cmd.name)}
+            className={`flex-1 text-left px-3 py-2 rounded-lg text-[13px] font-mono transition-all ${
+              selected?.name === cmd.name
+                ? "bg-amber-50 text-amber-800 font-medium"
+                : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            /{cmd.name}
+          </button>
+          <button
+            onClick={() => deleteCommand(cmd.name)}
+            className="opacity-0 group-hover:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50"
+          >
+            Delete
+          </button>
+        </div>
       ))}
     </div>
+  );
+
+  const createForm = creating ? (
+    <div className="mt-3 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+      <input
+        type="text"
+        placeholder="command-name"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+      />
+      <textarea
+        placeholder="Content (optional)"
+        value={newContent}
+        onChange={(e) => setNewContent(e.target.value)}
+        rows={3}
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400 resize-none"
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={createCommand}
+          className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+        >
+          Save
+        </button>
+        <button
+          onClick={() => { setCreating(false); setNewName(""); setNewContent(""); }}
+          className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      onClick={() => setCreating(true)}
+      className="mt-3 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg py-1.5 transition-colors"
+    >
+      + New Command
+    </button>
   );
 
   return (
@@ -56,8 +132,16 @@ export default function CommandsPage() {
         <p className="mt-1 text-sm text-gray-500">{commands.length} commands</p>
       </div>
 
-      {commands.length === 0 ? (
-        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200">No commands found</div>
+      {commands.length === 0 && !creating ? (
+        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200">
+          <p>No commands found</p>
+          <button
+            onClick={() => setCreating(true)}
+            className="mt-4 px-4 py-2 text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+          >
+            + New Command
+          </button>
+        </div>
       ) : (
         <>
           {/* Mobile */}
@@ -65,6 +149,7 @@ export default function CommandsPage() {
             {!selected ? (
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                 {commandList}
+                {createForm}
               </div>
             ) : (
               <div>
@@ -84,6 +169,7 @@ export default function CommandsPage() {
           <div className="hidden lg:flex gap-6">
             <div className="w-56 shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm self-start sticky top-6">
               {commandList}
+              {createForm}
             </div>
             <div className="flex-1 min-w-0">
               {selected ? (

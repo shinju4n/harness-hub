@@ -29,15 +29,15 @@ export default function KeybindingsPage() {
         <p className="mt-1 text-sm text-gray-500">Custom keyboard shortcuts for Claude Code</p>
       </div>
 
-      {!exists ? (
-        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <p>No keybindings.json found</p>
-          <p className="text-xs mt-1">Add keybindings to create the file</p>
-        </div>
-      ) : keybindings ? (
-        <JsonForm data={keybindings} onSave={saveKeybindings} />
-      ) : (
+      {keybindings === null ? (
         <div className="text-gray-400 pt-12 text-center">Loading...</div>
+      ) : (
+        <>
+          {!exists && (
+            <p className="mb-4 text-xs text-gray-400">No keybindings.json found — saving will create it.</p>
+          )}
+          <JsonForm data={keybindings} onSave={saveKeybindings} />
+        </>
       )}
     </div>
   );

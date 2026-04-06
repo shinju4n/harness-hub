@@ -12,10 +12,15 @@ interface SkillItem {
 export default function SkillsPage() {
   const [skills, setSkills] = useState<{ items: SkillItem[] } | null>(null);
   const [selected, setSelected] = useState<{ content: string; name: string; source: "plugin" | "custom" } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newContent, setNewContent] = useState("");
 
-  useEffect(() => {
+  const fetchSkills = () => {
     fetch("/api/skills").then((r) => r.json()).then(setSkills);
-  }, []);
+  };
+
+  useEffect(() => { fetchSkills(); }, []);
 
   const viewSkill = async (skill: SkillItem) => {
     const params = new URLSearchParams({ name: skill.name, source: skill.source });
@@ -37,6 +42,30 @@ export default function SkillsPage() {
     setSelected({ ...selected, content });
   };
 
+  const createSkill = async () => {
+    if (!newName.trim()) return;
+    const res = await fetch("/api/skills", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), content: newContent }),
+    });
+    if (res.ok) {
+      setCreating(false);
+      setNewName("");
+      setNewContent("");
+      fetchSkills();
+    }
+  };
+
+  const deleteSkill = async (name: string) => {
+    if (!window.confirm(`Delete skill "${name}"?`)) return;
+    const res = await fetch(`/api/skills?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (res.ok) {
+      if (selected?.name === name) setSelected(null);
+      fetchSkills();
+    }
+  };
+
   if (!skills) return <div className="text-gray-400 pt-12 text-center">Loading...</div>;
 
   const pluginSkills = skills.items.filter((s) => s.source === "plugin");
@@ -48,16 +77,55 @@ export default function SkillsPage() {
     return acc;
   }, {});
 
+  const createForm = creating ? (
+    <div className="mt-2 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+      <input
+        type="text"
+        placeholder="skill-name"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+      />
+      <textarea
+        placeholder="Content (optional)"
+        value={newContent}
+        onChange={(e) => setNewContent(e.target.value)}
+        rows={3}
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400 resize-none"
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={createSkill}
+          className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+        >
+          Save
+        </button>
+        <button
+          onClick={() => { setCreating(false); setNewName(""); setNewContent(""); }}
+          className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      onClick={() => setCreating(true)}
+      className="mt-2 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg py-1.5 transition-colors"
+    >
+      + New Skill
+    </button>
+  );
+
   const skillList = (
     <div className="space-y-1">
-      {customSkills.length > 0 && (
-        <div className="mb-3">
-          <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5 px-3">Custom</h3>
-          {customSkills.map((s) => (
+      <div className="mb-3">
+        <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5 px-3">Custom</h3>
+        {customSkills.map((s) => (
+          <div key={s.name} className="flex items-center gap-1 group">
             <button
-              key={s.name}
               onClick={() => viewSkill(s)}
-              className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
+              className={`flex-1 text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
                 selected?.name === s.name
                   ? "bg-amber-50 text-amber-800 font-medium"
                   : "text-gray-600 hover:bg-gray-50"
@@ -65,9 +133,16 @@ export default function SkillsPage() {
             >
               {s.name}
             </button>
-          ))}
-        </div>
-      )}
+            <button
+              onClick={() => deleteSkill(s.name)}
+              className="opacity-0 group-hover:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        ))}
+        {createForm}
+      </div>
       {Object.entries(grouped).map(([plugin, items]) => (
         <div key={plugin} className="mb-3">
           <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5 px-3">{plugin}</h3>

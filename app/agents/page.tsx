@@ -52,8 +52,12 @@ export default function AgentsPage() {
   const [selectedTeam, setSelectedTeam] = useState<TeamAgent | null>(null);
   const [agentContent, setAgentContent] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAgents = () => {
     fetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
+  };
+
+  useEffect(() => {
+    fetchAgents();
     fetch("/api/agents?tab=teams").then((r) => r.json()).then((d) => setTeams(d.teams));
   }, []);
 
@@ -74,6 +78,25 @@ export default function AgentsPage() {
       body: JSON.stringify({ name: selectedAgent.name, content }),
     });
     if (selectedAgent) setAgentContent(content);
+  };
+
+  const createAgent = async (name: string, content: string) => {
+    const res = await fetch("/api/agents", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, content }),
+    });
+    if (res.ok) fetchAgents();
+    return res.ok;
+  };
+
+  const deleteAgent = async (name: string) => {
+    if (!window.confirm(`Delete agent "${name}"?`)) return;
+    const res = await fetch(`/api/agents?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (res.ok) {
+      if (selectedAgent?.name === name) { setSelectedAgent(null); setAgentContent(null); }
+      fetchAgents();
+    }
   };
 
   return (
@@ -109,46 +132,116 @@ export default function AgentsPage() {
         </button>
       </div>
 
-      {tab === "definitions" && <DefinitionsTab agents={agents} selected={selectedAgent} content={agentContent} onSelect={viewAgent} onSave={saveAgent} />}
+      {tab === "definitions" && (
+        <DefinitionsTab
+          agents={agents}
+          selected={selectedAgent}
+          content={agentContent}
+          onSelect={viewAgent}
+          onSave={saveAgent}
+          onCreate={createAgent}
+          onDelete={deleteAgent}
+        />
+      )}
       {tab === "teams" && <TeamsTab teams={teams} selected={selectedTeam} onSelect={setSelectedTeam} />}
     </div>
   );
 }
 
-function DefinitionsTab({ agents, selected, content, onSelect, onSave }: {
+function DefinitionsTab({ agents, selected, content, onSelect, onSave, onCreate, onDelete }: {
   agents: AgentDef[];
   selected: AgentDef | null;
   content: string | null;
   onSelect: (a: AgentDef) => void;
   onSave: (content: string) => Promise<void>;
+  onCreate: (name: string, content: string) => Promise<boolean>;
+  onDelete: (name: string) => void;
 }) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newContent, setNewContent] = useState("");
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    const ok = await onCreate(newName.trim(), newContent);
+    if (ok) { setCreating(false); setNewName(""); setNewContent(""); }
+  };
+
+  const createForm = creating ? (
+    <div className="mt-3 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+      <input
+        type="text"
+        placeholder="agent-name"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+      />
+      <textarea
+        placeholder="System prompt (optional)"
+        value={newContent}
+        onChange={(e) => setNewContent(e.target.value)}
+        rows={3}
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400 resize-none"
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={handleCreate}
+          className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+        >
+          Save
+        </button>
+        <button
+          onClick={() => { setCreating(false); setNewName(""); setNewContent(""); }}
+          className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      onClick={() => setCreating(true)}
+      className="mt-3 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg py-1.5 transition-colors"
+    >
+      + New Agent
+    </button>
+  );
+
   const agentList = (
     <div className="space-y-0.5">
       {agents.length === 0 ? (
         <p className="px-3 py-6 text-center text-sm text-gray-400">No agent definitions found in ~/.claude/agents/</p>
       ) : (
         agents.map((a) => (
-          <button
-            key={a.name}
-            onClick={() => onSelect(a)}
-            className={`block w-full text-left px-3 py-2.5 rounded-lg text-[13px] transition-all ${
-              selected?.name === a.name
-                ? "bg-amber-50 text-amber-800 font-medium"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {a.color && (
-                <span className={`shrink-0 w-2 h-2 rounded-full ${colorMap[a.color]?.split(" ")[0] ?? "bg-gray-300"}`} />
+          <div key={a.name} className="flex items-start gap-1 group">
+            <button
+              onClick={() => onSelect(a)}
+              className={`flex-1 text-left px-3 py-2.5 rounded-lg text-[13px] transition-all ${
+                selected?.name === a.name
+                  ? "bg-amber-50 text-amber-800 font-medium"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {a.color && (
+                  <span className={`shrink-0 w-2 h-2 rounded-full ${colorMap[a.color]?.split(" ")[0] ?? "bg-gray-300"}`} />
+                )}
+                <span className="truncate">{a.name}</span>
+              </div>
+              {a.description && (
+                <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{a.description}</p>
               )}
-              <span className="truncate">{a.name}</span>
-            </div>
-            {a.description && (
-              <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{a.description}</p>
-            )}
-          </button>
+            </button>
+            <button
+              onClick={() => onDelete(a.name)}
+              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
         ))
       )}
+      {createForm}
     </div>
   );
 

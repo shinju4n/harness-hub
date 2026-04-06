@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHome } from "@/lib/claude-home";
 import { readMarkdownFile } from "@/lib/file-ops";
-import { readdir, writeFile } from "fs/promises";
+import { readdir, writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
 
 export async function GET(request: NextRequest) {
@@ -31,6 +31,34 @@ export async function GET(request: NextRequest) {
   const { readFullConfig } = await import("@/lib/config-reader");
   const config = await readFullConfig(claudeHome);
   return NextResponse.json(config.skills);
+}
+
+export async function POST(request: NextRequest) {
+  const claudeHome = getClaudeHome();
+  const { name, content } = await request.json();
+  if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  const dirPath = path.join(claudeHome, "skills", name);
+  await mkdir(dirPath, { recursive: true });
+  const filePath = path.join(dirPath, "SKILL.md");
+  try {
+    await writeFile(filePath, content ?? "", "utf-8");
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const claudeHome = getClaudeHome();
+  const name = request.nextUrl.searchParams.get("name");
+  if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  const dirPath = path.join(claudeHome, "skills", name);
+  try {
+    await rm(dirPath, { recursive: true, force: true });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }
 
 export async function PUT(request: NextRequest) {
