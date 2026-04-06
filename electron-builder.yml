@@ -1,5 +1,6 @@
 appId: com.harnesshub.app
 productName: Harness Hub
+asar: false
 directories:
   output: dist-electron
 files:

@@ -1,5 +1,5 @@
-import { app, BrowserWindow, Menu } from "electron";
-import { spawn, ChildProcess } from "child_process";
+import { app, BrowserWindow, Menu, dialog } from "electron";
+import { spawn, fork, ChildProcess } from "child_process";
 import path from "path";
 import { findAvailablePort, waitForServer } from "./server-utils";
 
@@ -9,45 +9,36 @@ let serverPort = 3000;
 
 const isDev = !app.isPackaged;
 
-function getNextBin(): string {
-  if (isDev) {
-    return path.join(process.cwd(), "node_modules", ".bin", "next");
-  }
-  return path.join(process.resourcesPath!, "app", "node_modules", ".bin", "next");
-}
-
-function getCwd(): string {
+function getAppPath(): string {
   if (isDev) {
     return process.cwd();
   }
+  // In packaged app, resources are in app.asar
   return path.join(process.resourcesPath!, "app");
 }
 
 async function startNextServer(): Promise<void> {
   serverPort = await findAvailablePort(3000);
-  const nextBin = getNextBin();
-  const cwd = getCwd();
-  const command = isDev ? "dev" : "start";
-  const args = [command, "--hostname", "127.0.0.1", "--port", String(serverPort)];
+  const appPath = getAppPath();
 
   if (isDev) {
-    // In dev, next binary has a shebang, can run directly
-    nextServer = spawn(nextBin, args, {
-      cwd,
+    const nextBin = path.join(appPath, "node_modules", ".bin", "next");
+    nextServer = spawn(nextBin, ["dev", "--hostname", "127.0.0.1", "--port", String(serverPort)], {
+      cwd: appPath,
       stdio: "pipe",
       env: { ...process.env, PORT: String(serverPort) },
       shell: true,
     });
   } else {
-    // In production, use Electron's bundled Node.js
-    nextServer = spawn(process.execPath, [nextBin, ...args], {
-      cwd,
+    // In production: use a launcher script that requires next/dist/bin/next
+    const nextCli = path.join(appPath, "node_modules", "next", "dist", "bin", "next");
+    nextServer = fork(nextCli, ["start", "--hostname", "127.0.0.1", "--port", String(serverPort)], {
+      cwd: appPath,
       stdio: "pipe",
       env: {
         ...process.env,
         PORT: String(serverPort),
         NODE_ENV: "production",
-        ELECTRON_RUN_AS_NODE: "1",
       },
     });
   }
@@ -60,11 +51,19 @@ async function startNextServer(): Promise<void> {
     console.error(`[next] ${data.toString().trim()}`);
   });
 
+  nextServer.on("error", (err) => {
+    console.error("[next] spawn error:", err);
+    dialog.showErrorBox(
+      "Harness Hub",
+      `Failed to start the server:\n${err.message}`
+    );
+  });
+
   nextServer.on("exit", (code) => {
     console.log(`[next] process exited with code ${code}`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (code !== 0 && code !== null && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.loadURL(
-        `data:text/html,<h2 style="font-family:system-ui;padding:40px;color:#666">Next.js server stopped (code ${code}). Please restart the app.</h2>`
+        `data:text/html,<div style="font-family:system-ui;padding:40px;text-align:center"><h2 style="color:#333">Server stopped</h2><p style="color:#666">Exit code: ${code}. Please restart the app.</p></div>`
       );
     }
   });
@@ -149,6 +148,10 @@ app.whenReady().then(async () => {
     createWindow();
   } catch (err) {
     console.error("Failed to start:", err);
+    dialog.showErrorBox(
+      "Harness Hub",
+      `Failed to start:\n${(err as Error).message}\n\nThe app will now close.`
+    );
     app.quit();
   }
 
