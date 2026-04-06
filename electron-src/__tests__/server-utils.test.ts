@@ -24,10 +24,15 @@ describe("findAvailablePort", () => {
 });
 
 describe("waitForServer", () => {
-  it("resolves when server is ready", async () => {
-    const server = http.createServer((_, res) => {
-      res.writeHead(200);
-      res.end("ok");
+  it("resolves when server responds with expected content", async () => {
+    const server = http.createServer((req, res) => {
+      if (req.url === "/api/config") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ plugins: {}, skills: {} }));
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
     });
     await new Promise<void>((resolve) => server.listen(3199, "127.0.0.1", resolve));
 
@@ -40,5 +45,19 @@ describe("waitForServer", () => {
 
   it("rejects on timeout", async () => {
     await expect(waitForServer("http://127.0.0.1:39999", 500)).rejects.toThrow("timeout");
+  });
+
+  it("does not resolve for non-harness server", async () => {
+    const server = http.createServer((_, res) => {
+      res.writeHead(200);
+      res.end("some other app");
+    });
+    await new Promise<void>((resolve) => server.listen(3198, "127.0.0.1", resolve));
+
+    try {
+      await expect(waitForServer("http://127.0.0.1:3198", 1000)).rejects.toThrow("timeout");
+    } finally {
+      server.close();
+    }
   });
 });
