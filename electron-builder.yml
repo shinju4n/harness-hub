@@ -1,14 +1,34 @@
 appId: com.harnesshub.app
 productName: Harness Hub
-asar: false
 directories:
   output: dist-electron
-files:
-  - "electron/**/*"
+asar: true
+asarUnpack:
+  - "server.js"
+  - "node_modules/**/*"
   - ".next/**/*"
   - "public/**/*"
-  - "node_modules/**/*"
+files:
+  - "electron/**/*"
+  - "server.js"
+  - ".next/standalone/node_modules/**/*"
+  - ".next/standalone/.next/**/*"
+  - ".next/static/**/*"
+  - "public/**/*"
   - "package.json"
+extraResources:
+  - from: ".next/standalone/"
+    to: "app.asar.unpacked/"
+    filter:
+      - "**/*"
+  - from: ".next/static/"
+    to: "app.asar.unpacked/.next/static/"
+    filter:
+      - "**/*"
+  - from: "public/"
+    to: "app.asar.unpacked/public/"
+    filter:
+      - "**/*"
 mac:
   target:
     - target: dmg

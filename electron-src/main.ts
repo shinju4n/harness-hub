@@ -13,8 +13,8 @@ function getAppPath(): string {
   if (isDev) {
     return process.cwd();
   }
-  // In packaged app, resources are in app.asar
-  return path.join(process.resourcesPath!, "app");
+  // In packaged app with asarUnpack, standalone lives outside asar
+  return path.join(process.resourcesPath!, "app.asar.unpacked");
 }
 
 async function startNextServer(): Promise<void> {
@@ -30,14 +30,15 @@ async function startNextServer(): Promise<void> {
       shell: true,
     });
   } else {
-    // In production: use a launcher script that requires next/dist/bin/next
-    const nextCli = path.join(appPath, "node_modules", "next", "dist", "bin", "next");
-    nextServer = fork(nextCli, ["start", "--hostname", "127.0.0.1", "--port", String(serverPort)], {
+    // In production: use standalone server.js
+    const serverJs = path.join(appPath, "server.js");
+    nextServer = fork(serverJs, [], {
       cwd: appPath,
       stdio: "pipe",
       env: {
         ...process.env,
         PORT: String(serverPort),
+        HOSTNAME: "127.0.0.1",
         NODE_ENV: "production",
       },
     });
