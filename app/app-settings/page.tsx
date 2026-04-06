@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import type { Profile } from "@/stores/app-settings-store";
 import packageJson from "@/package.json";
 
 const INTERVAL_OPTIONS = [
@@ -22,9 +23,16 @@ interface UpdateInfo {
 }
 
 export default function AppSettingsPage() {
-  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder } = useAppSettingsStore();
+  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile } = useAppSettingsStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPath, setEditPath] = useState("");
+  const [addingProfile, setAddingProfile] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+  const [newProfilePath, setNewProfilePath] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const checkForUpdates = async () => {
     setChecking(true);
@@ -157,6 +165,158 @@ export default function AppSettingsPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Profiles */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-medium text-gray-900">Profiles</h3>
+              <p className="text-sm text-gray-500 mt-0.5">Manage multiple ~/.claude paths</p>
+            </div>
+            {!addingProfile && (
+              <button
+                onClick={() => setAddingProfile(true)}
+                className="px-4 py-1.5 text-sm font-medium rounded-lg border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 transition-colors"
+              >
+                + Add
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {profiles.map((profile) => (
+              <div key={profile.id} className="rounded-lg border border-gray-100 bg-gray-50/50">
+                {editingProfile?.id === profile.id ? (
+                  <div className="p-3 space-y-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Profile name"
+                      className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                    />
+                    <input
+                      type="text"
+                      value={editPath}
+                      onChange={(e) => setEditPath(e.target.value)}
+                      placeholder="/absolute/path/.claude"
+                      className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                    />
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => {
+                          if (!editName.trim()) return;
+                          removeProfile(profile.id);
+                          addProfile(editName.trim(), editPath.trim() || "auto");
+                          setEditingProfile(null);
+                        }}
+                        className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingProfile(null)}
+                        className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 px-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-medium text-gray-800">{profile.name}</span>
+                        {profile.id === activeProfileId && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">Active</span>
+                        )}
+                        {profile.id === "default" && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">Default</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">
+                        {profile.homePath === "auto" ? "~/.claude (auto)" : profile.homePath}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => { setEditingProfile(profile); setEditName(profile.name); setEditPath(profile.homePath === "auto" ? "" : profile.homePath); }}
+                        className="px-2 py-1 text-xs text-gray-400 hover:text-amber-600 transition-colors rounded hover:bg-amber-50"
+                      >
+                        Edit
+                      </button>
+                      {profile.id !== "default" && (
+                        confirmDeleteId === profile.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { removeProfile(profile.id); setConfirmDeleteId(null); }}
+                              className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors rounded hover:bg-red-50"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(profile.id)}
+                            className="px-2 py-1 text-xs text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {addingProfile && (
+            <div className="mt-3 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+              <input
+                type="text"
+                placeholder="Profile name"
+                value={newProfileName}
+                onChange={(e) => setNewProfileName(e.target.value)}
+                className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                autoFocus
+              />
+              <input
+                type="text"
+                placeholder="/absolute/path/.claude"
+                value={newProfilePath}
+                onChange={(e) => setNewProfilePath(e.target.value)}
+                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+              />
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => {
+                    if (!newProfileName.trim() || !newProfilePath.trim()) return;
+                    addProfile(newProfileName.trim(), newProfilePath.trim());
+                    setNewProfileName("");
+                    setNewProfilePath("");
+                    setAddingProfile(false);
+                  }}
+                  className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setAddingProfile(false); setNewProfileName(""); setNewProfilePath(""); }}
+                  className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* About */}
