@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import type { Profile } from "@/stores/app-settings-store";
+import { FolderPicker } from "@/components/folder-picker";
 import packageJson from "@/package.json";
 
 const INTERVAL_OPTIONS = [
@@ -32,6 +33,7 @@ export default function AppSettingsPage() {
   const [addingProfile, setAddingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [newProfilePath, setNewProfilePath] = useState("");
+  const [browsing, setBrowsing] = useState<"edit" | "add" | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const checkForUpdates = async () => {

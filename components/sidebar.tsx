@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { FolderPicker } from "@/components/folder-picker";
 
 const DEFAULT_NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "grid" },
@@ -52,6 +53,7 @@ function ProfileDropdown() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
+  const [showBrowse, setShowBrowse] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const activeProfile = getActiveProfile();
 
@@ -157,14 +159,29 @@ function ProfileDropdown() {
                   className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
                   autoFocus
                 />
-                <input
-                  type="text"
-                  placeholder="/absolute/path/.claude"
-                  value={newPath}
-                  onChange={(e) => setNewPath(e.target.value)}
-                  className="w-full text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
-                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                />
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    placeholder="/absolute/path/.claude"
+                    value={newPath}
+                    onChange={(e) => setNewPath(e.target.value)}
+                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
+                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                    title="Browse"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                  </button>
+                </div>
+                {showBrowse && (
+                  <FolderPicker
+                    onSelect={(p) => { setNewPath(p); setShowBrowse(false); }}
+                    onClose={() => setShowBrowse(false)}
+                  />
+                )}
                 <div className="flex gap-1.5">
                   <button
                     onClick={handleAdd}
