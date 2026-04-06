@@ -16,11 +16,13 @@ mac:
         - x64
   category: public.app-category.developer-tools
   identity: null
+  icon: build/icon.icns
 win:
   target:
     - target: nsis
       arch:
         - x64
+  icon: build/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
