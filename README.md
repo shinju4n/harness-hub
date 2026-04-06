@@ -66,6 +66,20 @@ pnpm dev
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
+## Install from Release
+
+Download the latest release from [GitHub Releases](https://github.com/shinju4n/harness-hub/releases).
+
+### macOS
+
+After downloading the `.dmg`, if you see **"Harness Hub is damaged and can't be opened"**, run:
+
+```bash
+xattr -cr "/Applications/Harness Hub.app"
+```
+
+This removes the macOS quarantine flag (required for unsigned apps).
+
 ## Building
 
 ### macOS (.dmg)

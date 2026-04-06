@@ -164,7 +164,7 @@ export default function AppSettingsPage() {
           <div className="mt-3 space-y-2 text-sm text-gray-500">
             <div className="flex justify-between">
               <span>Version</span>
-              <span className="font-mono text-gray-700">0.2.0</span>
+              <span className="font-mono text-gray-700">0.3.0</span>
             </div>
             <div className="flex justify-between">
               <span>Data source</span>

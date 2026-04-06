@@ -17,8 +17,9 @@
 /.next/
 /out/
 
-# production
+# production (keep build/icon.* for electron-builder)
 /build
+!/build/icon.*
 
 # misc
 .DS_Store
