@@ -41,19 +41,23 @@ interface ConfigSummary {
   commands: { items: CommandInfo[]; total: number };
   hooks: { items: HookInfo[]; total: number };
   mcpServers: { items: McpServerInfo[]; total: number };
+  agents: { total: number };
+  rules: { total: number };
   claudeMd: { exists: boolean };
 }
 
 export async function readFullConfig(claudeHome: string): Promise<ConfigSummary> {
-  const [plugins, skills, commands, hooks, mcpServers, claudeMd] = await Promise.all([
+  const [plugins, skills, commands, hooks, mcpServers, agents, rules, claudeMd] = await Promise.all([
     readPlugins(claudeHome),
     readSkills(claudeHome),
     readCommands(claudeHome),
     readHooks(claudeHome),
     readMcpServers(claudeHome),
+    readAgentCount(claudeHome),
+    readRuleCount(claudeHome),
     readClaudeMdExists(claudeHome),
   ]);
-  return { plugins, skills, commands, hooks, mcpServers, claudeMd };
+  return { plugins, skills, commands, hooks, mcpServers, agents, rules, claudeMd };
 }
 
 async function readPlugins(claudeHome: string) {
@@ -175,6 +179,26 @@ async function readMcpServers(claudeHome: string) {
     items.push({ name, command: config.command, args: config.args ?? [] });
   }
   return { items, total: items.length };
+}
+
+async function readAgentCount(claudeHome: string) {
+  try {
+    const dir = path.join(claudeHome, "agents");
+    const entries = await readdir(dir);
+    return { total: entries.filter((f: string) => f.endsWith(".md")).length };
+  } catch {
+    return { total: 0 };
+  }
+}
+
+async function readRuleCount(claudeHome: string) {
+  try {
+    const dir = path.join(claudeHome, "rules");
+    const entries = await readdir(dir);
+    return { total: entries.filter((f: string) => f.endsWith(".md")).length };
+  } catch {
+    return { total: 0 };
+  }
 }
 
 async function readClaudeMdExists(claudeHome: string) {

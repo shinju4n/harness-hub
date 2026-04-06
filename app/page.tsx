@@ -71,6 +71,16 @@ export default function DashboardPage() {
           href="/mcp"
         />
         <SummaryCard
+          title="Agents"
+          value={String(c.agents?.total ?? 0)}
+          href="/agents"
+        />
+        <SummaryCard
+          title="Rules"
+          value={String(c.rules?.total ?? 0)}
+          href="/rules"
+        />
+        <SummaryCard
           title="CLAUDE.md"
           value={c.claudeMd?.exists ? "Found" : "Not found"}
           href="/settings"

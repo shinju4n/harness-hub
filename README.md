@@ -18,15 +18,18 @@
 
 ## Features
 
-| Page | Description |
-|------|-------------|
-| **Dashboard** | Overview cards showing counts for all harness components |
-| **Plugins** | View installed plugins with version info, toggle enable/disable |
-| **Skills** | Browse plugin and custom skills with rendered markdown preview, inline editing for custom skills |
-| **Commands** | View and edit custom slash commands with markdown preview |
-| **Hooks** | View hooks grouped by event type, delete individual hooks |
-| **MCP Servers** | View connected MCP server configurations |
-| **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview |
+| Page | Description | Docs |
+|------|-------------|------|
+| **Dashboard** | Overview cards showing counts for all harness components | [docs](docs/features/dashboard.md) |
+| **Plugins** | View installed plugins with version info, toggle enable/disable | [docs](docs/features/plugins.md) |
+| **Skills** | Browse plugin and custom skills with rendered markdown preview, inline editing | [docs](docs/features/skills.md) |
+| **Commands** | View and edit custom slash commands with markdown preview | [docs](docs/features/commands.md) |
+| **Hooks** | View hooks grouped by event type, delete individual hooks | [docs](docs/features/hooks.md) |
+| **MCP Servers** | View connected MCP server configurations | [docs](docs/features/mcp.md) |
+| **Agents** | View/edit agent definitions, browse team inbox messages | [docs](docs/features/agents.md) |
+| **Rules** | View/edit conditional rules for path-scoped instructions | [docs](docs/features/rules.md) |
+| **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
+| **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
 
 ### Highlights
 
