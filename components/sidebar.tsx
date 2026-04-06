@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import { FolderPicker } from "@/components/folder-picker";
+import { LoadingOverlay } from "@/components/loading-overlay";
 
 const DEFAULT_NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "grid" },
@@ -54,6 +55,7 @@ function ProfileDropdown() {
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
   const [showBrowse, setShowBrowse] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -78,9 +80,11 @@ function ProfileDropdown() {
   }, [dropdownOpen]);
 
   const handleProfileSelect = (id: string) => {
+    if (id === activeProfileId) { setDropdownOpen(false); return; }
     setActiveProfile(id);
     setDropdownOpen(false);
-    window.location.reload();
+    setSwitching(true);
+    setTimeout(() => window.location.reload(), 300);
   };
 
   const handleAdd = () => {
@@ -98,6 +102,7 @@ function ProfileDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
+      {switching && <LoadingOverlay />}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         className="w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors group"
