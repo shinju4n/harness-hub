@@ -21,6 +21,16 @@ export default function CommandsPage() {
     }
   };
 
+  const saveCommand = async (content: string) => {
+    if (!selected) return;
+    await fetch("/api/commands", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: selected.name, content }),
+    });
+    setSelected({ ...selected, content });
+  };
+
   const commandList = (
     <div className="space-y-0.5">
       {commands.map((cmd) => (
@@ -65,7 +75,7 @@ export default function CommandsPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
                   Back to list
                 </button>
-                <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} />
+                <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={saveCommand} />
               </div>
             )}
           </div>
@@ -77,7 +87,7 @@ export default function CommandsPage() {
             </div>
             <div className="flex-1 min-w-0">
               {selected ? (
-                <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} />
+                <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={saveCommand} />
               ) : (
                 <div className="text-gray-400 text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
                   Select a command to view

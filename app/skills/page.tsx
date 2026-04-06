@@ -11,7 +11,7 @@ interface SkillItem {
 
 export default function SkillsPage() {
   const [skills, setSkills] = useState<{ items: SkillItem[] } | null>(null);
-  const [selected, setSelected] = useState<{ content: string; name: string } | null>(null);
+  const [selected, setSelected] = useState<{ content: string; name: string; source: "plugin" | "custom" } | null>(null);
 
   useEffect(() => {
     fetch("/api/skills").then((r) => r.json()).then(setSkills);
@@ -23,8 +23,18 @@ export default function SkillsPage() {
     const res = await fetch(`/api/skills?${params}`);
     if (res.ok) {
       const data = await res.json();
-      setSelected({ content: data.content, name: skill.name });
+      setSelected({ content: data.content, name: skill.name, source: skill.source });
     }
+  };
+
+  const saveSkill = async (content: string) => {
+    if (!selected || selected.source !== "custom") return;
+    await fetch("/api/skills", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: selected.name, content }),
+    });
+    setSelected({ ...selected, content });
   };
 
   if (!skills) return <div className="text-gray-400 pt-12 text-center">Loading...</div>;
@@ -101,7 +111,7 @@ export default function SkillsPage() {
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
               Back to list
             </button>
-            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} />
+            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
           </div>
         )}
       </div>
@@ -113,7 +123,7 @@ export default function SkillsPage() {
         </div>
         <div className="flex-1 min-w-0">
           {selected ? (
-            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} />
+            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
           ) : (
             <div className="text-gray-400 text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
               Select a skill to view

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHome } from "@/lib/claude-home";
 import { readMarkdownFile } from "@/lib/file-ops";
-import { readdir } from "fs/promises";
+import { readdir, writeFile } from "fs/promises";
 import path from "path";
 
 export async function GET(request: NextRequest) {
@@ -31,6 +31,28 @@ export async function GET(request: NextRequest) {
   const { readFullConfig } = await import("@/lib/config-reader");
   const config = await readFullConfig(claudeHome);
   return NextResponse.json(config.skills);
+}
+
+export async function PUT(request: NextRequest) {
+  const claudeHome = getClaudeHome();
+  const { name, content } = await request.json();
+
+  if (!name || typeof content !== "string") {
+    return NextResponse.json({ error: "name and content required" }, { status: 400 });
+  }
+
+  const dirPath = path.join(claudeHome, "skills", name);
+  try {
+    const files = await readdir(dirPath);
+    const mdFile = files.find((f: string) => f.endsWith(".md"));
+    if (!mdFile) {
+      return NextResponse.json({ error: "Skill file not found" }, { status: 404 });
+    }
+    await writeFile(path.join(dirPath, mdFile), content, "utf-8");
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }
 
 async function findPluginSkillPath(claudeHome: string, pluginName: string, skillName: string): Promise<string> {

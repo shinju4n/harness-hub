@@ -9,10 +9,7 @@ type Tab = "settings" | "claude-md";
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("settings");
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
-  const [claudeMd, setClaudeMd] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState("");
-
+  const [claudeMd, setClaudeMd] = useState<string>("");
   useEffect(() => {
     fetch("/api/settings").then((r) => r.json()).then((d) => {
       setSettings(d.settings);
@@ -20,14 +17,13 @@ export default function SettingsPage() {
     });
   }, []);
 
-  const saveClaudeMd = async () => {
+  const saveClaudeMd = async (content: string) => {
     await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "claude-md", content: editContent }),
+      body: JSON.stringify({ type: "claude-md", content }),
     });
-    setClaudeMd(editContent);
-    setEditing(false);
+    setClaudeMd(content);
   };
 
   return (
@@ -76,41 +72,7 @@ export default function SettingsPage() {
       )}
 
       {tab === "claude-md" && (
-        <div>
-          {editing ? (
-            <div className="space-y-3">
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="w-full h-96 rounded-xl border border-gray-200 p-4 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={saveClaudeMd}
-                  className="px-4 py-2 bg-indigo-500 text-white text-sm rounded-lg hover:bg-indigo-600 transition-colors font-medium"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setEditing(false)}
-                  className="px-4 py-2 text-gray-500 text-sm rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <button
-                onClick={() => { setEditContent(claudeMd); setEditing(true); }}
-                className="mb-3 px-4 py-2 text-sm text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors font-medium"
-              >
-                Edit
-              </button>
-              <MarkdownViewer content={claudeMd} fileName="CLAUDE.md" />
-            </div>
-          )}
-        </div>
+        <MarkdownViewer content={claudeMd} fileName="CLAUDE.md" onSave={saveClaudeMd} />
       )}
     </div>
   );
