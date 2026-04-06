@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface McpServer { command: string; args?: string[]; }
 
@@ -16,7 +17,7 @@ export default function McpPage() {
   const [formArgs, setFormArgs] = useState("");
 
   const fetchServers = () => {
-    fetch("/api/mcp").then((r) => r.json()).then((d) => {
+    apiFetch("/api/mcp").then((r) => r.json()).then((d) => {
       setServers(d.servers ?? {});
       setMtime(d.mtime);
     });
@@ -25,7 +26,7 @@ export default function McpPage() {
   const { refresh } = usePolling(fetchServers);
 
   const saveServers = async (updated: Record<string, McpServer>) => {
-    const res = await fetch("/api/mcp", {
+    const res = await apiFetch("/api/mcp", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ servers: updated, mtime }),

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface CommandItem { name: string; fileName: string; }
 
@@ -15,13 +16,13 @@ export default function CommandsPage() {
   const [newContent, setNewContent] = useState("");
 
   const fetchCommands = () => {
-    fetch("/api/commands").then((r) => r.json()).then((d) => setCommands(d.items));
+    apiFetch("/api/commands").then((r) => r.json()).then((d) => setCommands(d.items));
   };
 
   const { refresh } = usePolling(fetchCommands);
 
   const viewCommand = async (name: string) => {
-    const res = await fetch(`/api/commands?name=${name}`);
+    const res = await apiFetch(`/api/commands?name=${name}`);
     if (res.ok) {
       const data = await res.json();
       setSelected({ content: data.content, name });
@@ -30,7 +31,7 @@ export default function CommandsPage() {
 
   const saveCommand = async (content: string) => {
     if (!selected) return;
-    await fetch("/api/commands", {
+    await apiFetch("/api/commands", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selected.name, content }),
@@ -40,7 +41,7 @@ export default function CommandsPage() {
 
   const createCommand = async () => {
     if (!newName.trim()) return;
-    const res = await fetch("/api/commands", {
+    const res = await apiFetch("/api/commands", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim(), content: newContent }),
@@ -55,7 +56,7 @@ export default function CommandsPage() {
 
   const deleteCommand = async (name: string) => {
     if (!window.confirm(`Delete command "${name}"?`)) return;
-    const res = await fetch(`/api/commands?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/commands?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
       if (selected?.name === name) setSelected(null);
       fetchCommands();

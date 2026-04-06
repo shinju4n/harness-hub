@@ -5,6 +5,7 @@ import { MarkdownViewer } from "@/components/markdown-viewer";
 import { JsonForm } from "@/components/json-form";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 type Tab = "settings" | "claude-md";
 
@@ -14,7 +15,7 @@ export default function SettingsPage() {
   const [claudeMd, setClaudeMd] = useState<string>("");
 
   const fetchSettings = () => {
-    fetch("/api/settings").then((r) => r.json()).then((d) => {
+    apiFetch("/api/settings").then((r) => r.json()).then((d) => {
       setSettings(d.settings);
       setClaudeMd(d.claudeMd);
     });
@@ -23,7 +24,7 @@ export default function SettingsPage() {
   const { refresh } = usePolling(fetchSettings);
 
   const saveClaudeMd = async (content: string) => {
-    await fetch("/api/settings", {
+    await apiFetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "claude-md", content }),
@@ -66,7 +67,7 @@ export default function SettingsPage() {
             data={settings}
             readOnlyKeys={["hooks"]}
             onSave={async (data) => {
-              await fetch("/api/settings", {
+              await apiFetch("/api/settings", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: "settings", content: data }),

@@ -4,13 +4,14 @@ import { useState } from "react";
 import { JsonForm } from "@/components/json-form";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 export default function KeybindingsPage() {
   const [keybindings, setKeybindings] = useState<Record<string, unknown> | null>(null);
   const [exists, setExists] = useState(false);
 
   const fetchKeybindings = () => {
-    fetch("/api/keybindings").then((r) => r.json()).then((d) => {
+    apiFetch("/api/keybindings").then((r) => r.json()).then((d) => {
       setKeybindings(d.keybindings);
       setExists(d.exists);
     });
@@ -19,7 +20,7 @@ export default function KeybindingsPage() {
   const { refresh } = usePolling(fetchKeybindings);
 
   const saveKeybindings = async (data: Record<string, unknown>) => {
-    await fetch("/api/keybindings", {
+    await apiFetch("/api/keybindings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ keybindings: data }),

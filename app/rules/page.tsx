@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface RuleItem { name: string; fileName: string; }
 
@@ -15,13 +16,13 @@ export default function RulesPage() {
   const [newContent, setNewContent] = useState("");
 
   const fetchRules = () => {
-    fetch("/api/rules").then((r) => r.json()).then((d) => setRules(d.items));
+    apiFetch("/api/rules").then((r) => r.json()).then((d) => setRules(d.items));
   };
 
   const { refresh } = usePolling(fetchRules);
 
   const viewRule = async (name: string) => {
-    const res = await fetch(`/api/rules?name=${name}`);
+    const res = await apiFetch(`/api/rules?name=${name}`);
     if (res.ok) {
       const data = await res.json();
       setSelected({ content: data.content, name });
@@ -30,7 +31,7 @@ export default function RulesPage() {
 
   const saveRule = async (content: string) => {
     if (!selected) return;
-    await fetch("/api/rules", {
+    await apiFetch("/api/rules", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selected.name, content }),
@@ -40,7 +41,7 @@ export default function RulesPage() {
 
   const createRule = async () => {
     if (!newName.trim()) return;
-    const res = await fetch("/api/rules", {
+    const res = await apiFetch("/api/rules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim(), content: newContent }),
@@ -55,7 +56,7 @@ export default function RulesPage() {
 
   const deleteRule = async (name: string) => {
     if (!window.confirm(`Delete rule "${name}"?`)) return;
-    const res = await fetch(`/api/rules?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/rules?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
       if (selected?.name === name) setSelected(null);
       fetchRules();

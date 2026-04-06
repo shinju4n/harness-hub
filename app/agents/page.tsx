@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 type Tab = "definitions" | "teams";
 
@@ -55,18 +56,18 @@ export default function AgentsPage() {
   const [agentContent, setAgentContent] = useState<string | null>(null);
 
   const fetchAgents = () => {
-    fetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
+    apiFetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
   };
 
   const { refresh } = usePolling(fetchAgents);
 
   useEffect(() => {
-    fetch("/api/agents?tab=teams").then((r) => r.json()).then((d) => setTeams(d.teams));
+    apiFetch("/api/agents?tab=teams").then((r) => r.json()).then((d) => setTeams(d.teams));
   }, []);
 
   const viewAgent = async (agent: AgentDef) => {
     setSelectedAgent(agent);
-    const res = await fetch(`/api/agents?tab=definitions&name=${agent.name}`);
+    const res = await apiFetch(`/api/agents?tab=definitions&name=${agent.name}`);
     if (res.ok) {
       const data = await res.json();
       setAgentContent(data.content);
@@ -75,7 +76,7 @@ export default function AgentsPage() {
 
   const saveAgent = async (content: string) => {
     if (!selectedAgent) return;
-    await fetch("/api/agents", {
+    await apiFetch("/api/agents", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selectedAgent.name, content }),
@@ -84,7 +85,7 @@ export default function AgentsPage() {
   };
 
   const createAgent = async (name: string, content: string) => {
-    const res = await fetch("/api/agents", {
+    const res = await apiFetch("/api/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, content }),
@@ -95,7 +96,7 @@ export default function AgentsPage() {
 
   const deleteAgent = async (name: string) => {
     if (!window.confirm(`Delete agent "${name}"?`)) return;
-    const res = await fetch(`/api/agents?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/agents?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
       if (selectedAgent?.name === name) { setSelectedAgent(null); setAgentContent(null); }
       fetchAgents();

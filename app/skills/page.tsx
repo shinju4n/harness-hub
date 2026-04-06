@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface SkillItem {
   name: string;
@@ -19,7 +20,7 @@ export default function SkillsPage() {
   const [newContent, setNewContent] = useState("");
 
   const fetchSkills = () => {
-    fetch("/api/skills").then((r) => r.json()).then(setSkills);
+    apiFetch("/api/skills").then((r) => r.json()).then(setSkills);
   };
 
   const { refresh } = usePolling(fetchSkills);
@@ -27,7 +28,7 @@ export default function SkillsPage() {
   const viewSkill = async (skill: SkillItem) => {
     const params = new URLSearchParams({ name: skill.name, source: skill.source });
     if (skill.pluginName) params.set("plugin", skill.pluginName);
-    const res = await fetch(`/api/skills?${params}`);
+    const res = await apiFetch(`/api/skills?${params}`);
     if (res.ok) {
       const data = await res.json();
       setSelected({ content: data.content, name: skill.name, source: skill.source });
@@ -36,7 +37,7 @@ export default function SkillsPage() {
 
   const saveSkill = async (content: string) => {
     if (!selected || selected.source !== "custom") return;
-    await fetch("/api/skills", {
+    await apiFetch("/api/skills", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selected.name, content }),
@@ -46,7 +47,7 @@ export default function SkillsPage() {
 
   const createSkill = async () => {
     if (!newName.trim()) return;
-    const res = await fetch("/api/skills", {
+    const res = await apiFetch("/api/skills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim(), content: newContent }),
@@ -61,7 +62,7 @@ export default function SkillsPage() {
 
   const deleteSkill = async (name: string) => {
     if (!window.confirm(`Delete skill "${name}"?`)) return;
-    const res = await fetch(`/api/skills?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    const res = await apiFetch(`/api/skills?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
       if (selected?.name === name) setSelected(null);
       fetchSkills();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface PluginData {
   enabledPlugins: Record<string, boolean>;
@@ -15,7 +16,7 @@ export default function PluginsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPlugins = async () => {
-    const res = await fetch("/api/plugins");
+    const res = await apiFetch("/api/plugins");
     if (res.ok) setData(await res.json());
     else setError("Failed to load plugins");
   };
@@ -24,7 +25,7 @@ export default function PluginsPage() {
 
   const togglePlugin = async (key: string, enabled: boolean) => {
     if (!data) return;
-    const res = await fetch("/api/plugins", {
+    const res = await apiFetch("/api/plugins", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pluginKey: key, enabled, mtime: data.settingsMtime }),

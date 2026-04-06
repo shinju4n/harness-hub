@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiFetch } from "@/lib/api-client";
 
 interface ConfigState {
   loading: boolean;
@@ -15,7 +16,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   fetchConfig: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch("/api/config");
+      const res = await apiFetch("/api/config");
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch config");

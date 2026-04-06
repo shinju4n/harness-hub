@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
+import { apiFetch } from "@/lib/api-client";
 
 interface HookEntry {
   matcher?: string;
@@ -29,7 +30,7 @@ export default function HooksPage() {
   const [newTimeout, setNewTimeout] = useState("");
 
   const fetchHooks = () => {
-    fetch("/api/hooks").then((r) => r.json()).then((d) => {
+    apiFetch("/api/hooks").then((r) => r.json()).then((d) => {
       setHooks(d.hooks);
       setMtime(d.mtime);
     });
@@ -43,7 +44,7 @@ export default function HooksPage() {
     const updated = { ...hooks };
     updated[event] = updated[event].filter((_, i) => i !== entryIndex);
     if (updated[event].length === 0) delete updated[event];
-    const res = await fetch("/api/hooks", {
+    const res = await apiFetch("/api/hooks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ hooks: updated, mtime }),
@@ -68,7 +69,7 @@ export default function HooksPage() {
     };
     if (!updated[newEvent]) updated[newEvent] = [];
     updated[newEvent] = [...updated[newEvent], entry];
-    const res = await fetch("/api/hooks", {
+    const res = await apiFetch("/api/hooks", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ hooks: updated, mtime }),
