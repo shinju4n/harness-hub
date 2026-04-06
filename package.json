@@ -20,6 +20,7 @@
     "electron:dev": "tsc -p tsconfig.electron.json && electron .",
     "electron:build": "next build && tsc -p tsconfig.electron.json && electron-builder",
     "electron:build:mac": "next build && tsc -p tsconfig.electron.json && electron-builder --mac",
+    "release": "bash scripts/release.sh",
     "electron:build:win": "next build && tsc -p tsconfig.electron.json && electron-builder --win"
   },
   "dependencies": {

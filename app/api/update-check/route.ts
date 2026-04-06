@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
+import packageJson from "@/package.json";
+
 const REPO = "shinju4n/harness-hub";
-const CURRENT_VERSION = "0.3.0";
+const CURRENT_VERSION = packageJson.version;
 
 export async function GET() {
   try {

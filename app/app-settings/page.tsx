@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import packageJson from "@/package.json";
 
 const INTERVAL_OPTIONS = [
   { value: 3, label: "3s" },
@@ -164,7 +165,7 @@ export default function AppSettingsPage() {
           <div className="mt-3 space-y-2 text-sm text-gray-500">
             <div className="flex justify-between">
               <span>Version</span>
-              <span className="font-mono text-gray-700">0.3.0</span>
+              <span className="font-mono text-gray-700">{packageJson.version}</span>
             </div>
             <div className="flex justify-between">
               <span>Data source</span>
