@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHome } from "@/lib/claude-home";
-import { readJsonFile, readMarkdownFile } from "@/lib/file-ops";
+import { readJsonFile, writeJsonFile, readMarkdownFile } from "@/lib/file-ops";
 import { writeFile } from "fs/promises";
 import path from "path";
 
@@ -25,6 +25,19 @@ export async function PUT(request: NextRequest) {
   if (type === "claude-md") {
     const filePath = path.join(claudeHome, "CLAUDE.md");
     await writeFile(filePath, content, "utf-8");
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === "settings") {
+    const settingsPath = path.join(claudeHome, "settings.json");
+    const current = await readJsonFile(settingsPath);
+    if (!current.mtime) {
+      return NextResponse.json({ error: "Cannot read settings.json" }, { status: 500 });
+    }
+    const result = await writeJsonFile(settingsPath, content, current.mtime);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 409 });
+    }
     return NextResponse.json({ success: true });
   }
 
