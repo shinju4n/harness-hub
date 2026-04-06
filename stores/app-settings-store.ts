@@ -1,26 +1,59 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export interface Profile {
+  id: string;
+  name: string;
+  homePath: string; // "auto" = default detection, or absolute path
+}
+
 interface AppSettingsState {
   pollingEnabled: boolean;
   pollingInterval: number;
   navOrder: string[] | null;
+  profiles: Profile[];
+  activeProfileId: string;
   setPollingEnabled: (enabled: boolean) => void;
   setPollingInterval: (seconds: number) => void;
   setNavOrder: (order: string[]) => void;
   resetNavOrder: () => void;
+  addProfile: (name: string, homePath: string) => void;
+  removeProfile: (id: string) => void;
+  setActiveProfile: (id: string) => void;
+  getActiveProfile: () => Profile;
 }
+
+const DEFAULT_PROFILE: Profile = { id: "default", name: "Default", homePath: "auto" };
 
 export const useAppSettingsStore = create<AppSettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       pollingEnabled: true,
       pollingInterval: 5,
       navOrder: null,
+      profiles: [DEFAULT_PROFILE],
+      activeProfileId: "default",
       setPollingEnabled: (enabled) => set({ pollingEnabled: enabled }),
       setPollingInterval: (seconds) => set({ pollingInterval: seconds }),
       setNavOrder: (order) => set({ navOrder: order }),
       resetNavOrder: () => set({ navOrder: null }),
+      addProfile: (name, homePath) => {
+        const id = `profile-${Date.now()}`;
+        set((state) => ({
+          profiles: [...state.profiles, { id, name, homePath }],
+        }));
+      },
+      removeProfile: (id) => {
+        set((state) => ({
+          profiles: state.profiles.filter((p) => p.id !== id),
+          activeProfileId: state.activeProfileId === id ? "default" : state.activeProfileId,
+        }));
+      },
+      setActiveProfile: (id) => set({ activeProfileId: id }),
+      getActiveProfile: () => {
+        const { profiles, activeProfileId } = get();
+        return profiles.find((p) => p.id === activeProfileId) ?? DEFAULT_PROFILE;
+      },
     }),
     {
       name: "harness-hub-settings",
