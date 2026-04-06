@@ -69,7 +69,7 @@ export default function SkillsPage() {
     }
   };
 
-  if (!skills) return <div className="text-gray-400 pt-12 text-center">Loading...</div>;
+  if (!skills) return <div className="text-gray-400 dark:text-gray-500 pt-12 text-center">Loading...</div>;
 
   const pluginSkills = skills.items.filter((s) => s.source === "plugin");
   const customSkills = skills.items.filter((s) => s.source === "custom");
@@ -81,20 +81,20 @@ export default function SkillsPage() {
   }, {});
 
   const createForm = creating ? (
-    <div className="mt-2 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+    <div className="mt-2 p-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50/50 dark:bg-amber-950/50 space-y-2">
       <input
         type="text"
         placeholder="skill-name"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
       />
       <textarea
         placeholder="Content (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={3}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
       />
       <div className="flex gap-1.5">
         <button
@@ -105,7 +105,7 @@ export default function SkillsPage() {
         </button>
         <button
           onClick={() => { setCreating(false); setNewName(""); setNewContent(""); }}
-          className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           Cancel
         </button>
@@ -114,7 +114,7 @@ export default function SkillsPage() {
   ) : (
     <button
       onClick={() => setCreating(true)}
-      className="mt-2 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg py-1.5 transition-colors"
+      className="mt-2 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 rounded-lg py-1.5 transition-colors"
     >
       + New Skill
     </button>
@@ -123,22 +123,22 @@ export default function SkillsPage() {
   const skillList = (
     <div className="space-y-1">
       <div className="mb-3">
-        <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5 px-3">Custom</h3>
+        <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">Custom</h3>
         {customSkills.map((s) => (
           <div key={s.name} className="flex items-center gap-1 group">
             <button
               onClick={() => viewSkill(s)}
               className={`flex-1 text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
                 selected?.name === s.name
-                  ? "bg-amber-50 text-amber-800 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
               {s.name}
             </button>
             <button
               onClick={() => deleteSkill(s.name)}
-              className="opacity-0 group-hover:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50"
+              className="opacity-0 group-hover:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>
@@ -148,15 +148,15 @@ export default function SkillsPage() {
       </div>
       {Object.entries(grouped).map(([plugin, items]) => (
         <div key={plugin} className="mb-3">
-          <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5 px-3">{plugin}</h3>
+          <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">{plugin}</h3>
           {items.map((s) => (
             <button
               key={s.name}
               onClick={() => viewSkill(s)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
                 selected?.name === s.name
-                  ? "bg-amber-50 text-amber-800 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
               {s.name}
@@ -171,8 +171,8 @@ export default function SkillsPage() {
     <div>
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Skills</h2>
-          <p className="mt-1 text-sm text-gray-500">{skills.items.length} total</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Skills</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{skills.items.length} total</p>
         </div>
         <RefreshButton onRefresh={refresh} />
       </div>
@@ -180,14 +180,14 @@ export default function SkillsPage() {
       {/* Mobile: stacked layout */}
       <div className="lg:hidden">
         {!selected ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
             {skillList}
           </div>
         ) : (
           <div>
             <button
               onClick={() => setSelected(null)}
-              className="mb-3 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
               Back to list
@@ -199,14 +199,14 @@ export default function SkillsPage() {
 
       {/* Desktop: side-by-side */}
       <div className="hidden lg:flex gap-6">
-        <div className="w-64 shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {skillList}
         </div>
         <div className="flex-1 min-w-0">
           {selected ? (
             <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
           ) : (
-            <div className="text-gray-400 text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="text-gray-400 dark:text-gray-500 text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
               Select a skill to view
             </div>
           )}

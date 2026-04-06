@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readMarkdownFile, readJsonFile } from "@/lib/file-ops";
-import { readdir, writeFile, mkdir } from "fs/promises";
+import { readdir, writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
 
@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
       const filePath = path.join(agentsDir, `${agentName}.md`);
       const result = await readMarkdownFile(filePath);
       if (result.data) {
-        return NextResponse.json({ content: result.data.content, frontmatter: result.data.frontmatter });
+        let rawContent = "";
+        try { rawContent = await readFile(filePath, "utf-8"); } catch {}
+        return NextResponse.json({ content: result.data.content, frontmatter: result.data.frontmatter, rawContent });
       }
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }

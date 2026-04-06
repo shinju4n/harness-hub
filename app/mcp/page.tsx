@@ -78,37 +78,37 @@ export default function McpPage() {
   const entries = Object.entries(servers);
 
   const serverForm = (
-    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/50 space-y-3">
-      <h3 className="text-sm font-medium text-gray-700">{editingName ? `Edit "${editingName}"` : "New Server"}</h3>
+    <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/50 space-y-3">
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">{editingName ? `Edit "${editingName}"` : "New Server"}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Name</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Name</label>
           <input
             type="text"
             placeholder="server-name"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Command</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Command</label>
           <input
             type="text"
             placeholder="e.g. npx"
             value={formCommand}
             onChange={(e) => setFormCommand(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="block text-xs text-gray-500 mb-1">Args (space-separated)</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Args (space-separated)</label>
           <input
             type="text"
             placeholder="e.g. -y @modelcontextprotocol/server-filesystem /path"
             value={formArgs}
             onChange={(e) => setFormArgs(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
           />
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function McpPage() {
         </button>
         <button
           onClick={cancelForm}
-          className="px-4 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          className="px-4 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           Cancel
         </button>
@@ -133,15 +133,15 @@ export default function McpPage() {
     <div>
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">MCP Servers</h2>
-          <p className="mt-1 text-sm text-gray-500">{entries.length} configured</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">MCP Servers</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{entries.length} configured</p>
         </div>
         <div className="flex items-center gap-2">
           <RefreshButton onRefresh={refresh} />
           {!creating && !editingName && (
             <button
               onClick={startCreate}
-              className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
+              className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 rounded-lg px-3 py-1.5 transition-colors"
             >
               + Add Server
             </button>
@@ -152,35 +152,35 @@ export default function McpPage() {
       {(creating || editingName) && <div className="mb-6">{serverForm}</div>}
 
       {entries.length === 0 && !creating ? (
-        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div className="text-gray-400 dark:text-gray-500 text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
           No MCP servers configured
         </div>
       ) : (
         <div className="space-y-3">
           {entries.map(([name, config]) => (
-            <div key={name} className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+            <div key={name} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-gray-900">{name}</h3>
-                  <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2 overflow-x-auto">
-                    <code className="text-xs sm:text-sm font-mono text-gray-600 whitespace-nowrap">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{name}</h3>
+                  <div className="mt-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 overflow-x-auto">
+                    <code className="text-xs sm:text-sm font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       $ {config.command} {config.args?.join(" ")}
                     </code>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-600 border border-green-200">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 dark:bg-green-950 text-green-600 border border-green-200 dark:border-green-800">
                     active
                   </span>
                   <button
                     onClick={() => startEdit(name, config)}
-                    className="text-xs text-gray-400 hover:text-amber-600 transition-colors px-2 py-1 rounded hover:bg-amber-50"
+                    className="text-xs text-gray-400 hover:text-amber-600 transition-colors px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-950"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => deleteServer(name)}
-                    className="text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50"
+                    className="text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
                   >
                     Delete
                   </button>

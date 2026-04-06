@@ -13,6 +13,7 @@ interface AppSettingsState {
   navOrder: string[] | null;
   profiles: Profile[];
   activeProfileId: string;
+  theme: "system" | "light" | "dark";
   setPollingEnabled: (enabled: boolean) => void;
   setPollingInterval: (seconds: number) => void;
   setNavOrder: (order: string[]) => void;
@@ -22,6 +23,7 @@ interface AppSettingsState {
   updateProfile: (id: string, name: string, homePath: string) => void;
   setActiveProfile: (id: string) => void;
   getActiveProfile: () => Profile;
+  setTheme: (theme: "system" | "light" | "dark") => void;
 }
 
 const DEFAULT_PROFILE: Profile = { id: "default", name: "Default", homePath: "auto" };
@@ -34,6 +36,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       navOrder: null,
       profiles: [DEFAULT_PROFILE],
       activeProfileId: "default",
+      theme: "system",
       setPollingEnabled: (enabled) => set({ pollingEnabled: enabled }),
       setPollingInterval: (seconds) => set({ pollingInterval: seconds }),
       setNavOrder: (order) => set({ navOrder: order }),
@@ -58,6 +61,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
         }));
       },
       setActiveProfile: (id) => set({ activeProfileId: id }),
+      setTheme: (theme) => set({ theme }),
       getActiveProfile: () => {
         const { profiles, activeProfileId } = get();
         return profiles.find((p) => p.id === activeProfileId) ?? DEFAULT_PROFILE;

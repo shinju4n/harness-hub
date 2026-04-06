@@ -54,6 +54,7 @@ export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<AgentDef | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<TeamAgent | null>(null);
   const [agentContent, setAgentContent] = useState<string | null>(null);
+  const [agentRawContent, setAgentRawContent] = useState<string | null>(null);
 
   const fetchAgents = () => {
     apiFetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
@@ -71,6 +72,7 @@ export default function AgentsPage() {
     if (res.ok) {
       const data = await res.json();
       setAgentContent(data.content);
+      setAgentRawContent(data.rawContent ?? data.content);
     }
   };
 
@@ -81,7 +83,12 @@ export default function AgentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selectedAgent.name, content }),
     });
-    if (selectedAgent) setAgentContent(content);
+    if (selectedAgent) {
+      setAgentRawContent(content);
+      // Parse the new frontmatter body for display (content after frontmatter)
+      const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
+      setAgentContent(fmMatch ? fmMatch[1] : content);
+    }
   };
 
   const createAgent = async (name: string, content: string) => {
@@ -107,19 +114,19 @@ export default function AgentsPage() {
     <div>
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Agents</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Agents</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {agents.length} definitions, {teams.length} team inboxes
           </p>
         </div>
         <RefreshButton onRefresh={refresh} />
       </div>
 
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 w-fit mb-6">
+      <div className="flex gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 w-fit mb-6">
         <button
           onClick={() => setTab("definitions")}
           className={`px-4 py-1.5 text-sm rounded-md transition-all ${
-            tab === "definitions" ? "bg-white text-gray-900 shadow-sm font-medium" : "text-gray-500 hover:text-gray-700"
+            tab === "definitions" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
           Definitions
@@ -127,7 +134,7 @@ export default function AgentsPage() {
         <button
           onClick={() => setTab("teams")}
           className={`px-4 py-1.5 text-sm rounded-md transition-all ${
-            tab === "teams" ? "bg-white text-gray-900 shadow-sm font-medium" : "text-gray-500 hover:text-gray-700"
+            tab === "teams" ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
           Team Inboxes
@@ -144,8 +151,9 @@ export default function AgentsPage() {
           agents={agents}
           selected={selectedAgent}
           content={agentContent}
+          rawContent={agentRawContent}
           onSelect={viewAgent}
-          onBack={() => { setSelectedAgent(null); setAgentContent(null); }}
+          onBack={() => { setSelectedAgent(null); setAgentContent(null); setAgentRawContent(null); }}
           onSave={saveAgent}
           onCreate={createAgent}
           onDelete={deleteAgent}
@@ -156,10 +164,11 @@ export default function AgentsPage() {
   );
 }
 
-function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, onCreate, onDelete }: {
+function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBack, onSave, onCreate, onDelete }: {
   agents: AgentDef[];
   selected: AgentDef | null;
   content: string | null;
+  rawContent: string | null;
   onSelect: (a: AgentDef) => void;
   onBack: () => void;
   onSave: (content: string) => Promise<void>;
@@ -177,20 +186,20 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
   };
 
   const createForm = creating ? (
-    <div className="mt-3 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+    <div className="mt-3 p-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50/50 dark:bg-amber-950/50 space-y-2">
       <input
         type="text"
         placeholder="agent-name"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
       />
       <textarea
         placeholder="System prompt (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={3}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
       />
       <div className="flex gap-1.5">
         <button
@@ -201,7 +210,7 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
         </button>
         <button
           onClick={() => { setCreating(false); setNewName(""); setNewContent(""); }}
-          className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           Cancel
         </button>
@@ -210,7 +219,7 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
   ) : (
     <button
       onClick={() => setCreating(true)}
-      className="mt-3 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg py-1.5 transition-colors"
+      className="mt-3 w-full text-[13px] border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 rounded-lg py-1.5 transition-colors"
     >
       + New Agent
     </button>
@@ -219,7 +228,7 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
   const agentList = (
     <div className="space-y-0.5">
       {agents.length === 0 ? (
-        <p className="px-3 py-6 text-center text-sm text-gray-400">No agent definitions found in ~/.claude/agents/</p>
+        <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">No agent definitions found in ~/.claude/agents/</p>
       ) : (
         agents.map((a) => (
           <div key={a.name} className="flex items-start gap-1 group">
@@ -227,8 +236,8 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
               onClick={() => onSelect(a)}
               className={`flex-1 text-left px-3 py-2.5 rounded-lg text-[13px] transition-all ${
                 selected?.name === a.name
-                  ? "bg-amber-50 text-amber-800 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -238,12 +247,12 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
                 <span className="truncate">{a.name}</span>
               </div>
               {a.description && (
-                <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{a.description}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{a.description}</p>
               )}
             </button>
             <button
               onClick={() => onDelete(a.name)}
-              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50"
+              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>
@@ -259,33 +268,33 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
       {/* Mobile */}
       <div className="lg:hidden">
         {!selected || !content ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
             {agentList}
           </div>
         ) : (
           <div>
             <button
               onClick={onBack}
-              className="mb-3 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
               Back to list
             </button>
-            <AgentDetail agent={selected} content={content} onSave={onSave} />
+            <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
           </div>
         )}
       </div>
 
       {/* Desktop */}
       <div className="hidden lg:flex gap-6">
-        <div className="w-64 shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {agentList}
         </div>
         <div className="flex-1 min-w-0">
           {selected && content ? (
-            <AgentDetail agent={selected} content={content} onSave={onSave} />
+            <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
           ) : (
-            <div className="text-gray-400 text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="text-gray-400 dark:text-gray-500 text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
               Select an agent to view
             </div>
           )}
@@ -295,54 +304,54 @@ function DefinitionsTab({ agents, selected, content, onSelect, onBack, onSave, o
   );
 }
 
-function AgentDetail({ agent, content, onSave }: { agent: AgentDef; content: string; onSave: (c: string) => Promise<void> }) {
+function AgentDetail({ agent, content, rawContent, onSave }: { agent: AgentDef; content: string; rawContent: string; onSave: (c: string) => Promise<void> }) {
   return (
     <div className="space-y-4">
       {/* Meta card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <h3 className="font-semibold text-gray-900 text-lg">{agent.name}</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{agent.name}</h3>
           {agent.color && (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${colorMap[agent.color] ?? "bg-gray-100 text-gray-500"}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${colorMap[agent.color] ?? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"}`}>
               {agent.color}
             </span>
           )}
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
             {agent.scope}
           </span>
         </div>
         {agent.description && (
-          <p className="text-sm text-gray-600 mb-3">{agent.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{agent.description}</p>
         )}
         <div className="flex flex-wrap gap-2 text-xs">
           {agent.model && (
-            <span className="px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600">
+            <span className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
               model: <span className="font-mono">{agent.model}</span>
             </span>
           )}
           {agent.memory && (
-            <span className="px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600">
+            <span className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
               memory: <span className="font-mono">{agent.memory}</span>
             </span>
           )}
           {agent.effort && (
-            <span className="px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600">
+            <span className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
               effort: <span className="font-mono">{agent.effort}</span>
             </span>
           )}
           {agent.background && (
-            <span className="px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600">background</span>
+            <span className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">background</span>
           )}
           {agent.tools && agent.tools.length > 0 && (
-            <span className="px-2 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600">
+            <span className="px-2 py-1 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
               tools: <span className="font-mono">{Array.isArray(agent.tools) ? agent.tools.join(", ") : agent.tools}</span>
             </span>
           )}
         </div>
       </div>
 
-      {/* System prompt */}
-      <MarkdownViewer content={content} fileName={`${agent.name}.md`} onSave={onSave} />
+      {/* System prompt — edit mode shows full raw file (frontmatter + body) */}
+      <MarkdownViewer content={content} rawContent={rawContent} fileName={`${agent.name}.md`} onSave={onSave} />
     </div>
   );
 }
@@ -354,7 +363,7 @@ function TeamsTab({ teams, selected, onSelect }: {
 }) {
   if (teams.length === 0) {
     return (
-      <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div className="text-gray-400 dark:text-gray-500 text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
         No team inboxes found
       </div>
     );
@@ -363,17 +372,17 @@ function TeamsTab({ teams, selected, onSelect }: {
   return (
     <div className="space-y-3">
       {teams.map((t) => (
-        <div key={`${t.team}/${t.name}`} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div key={`${t.team}/${t.name}`} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
           <button
             onClick={() => onSelect(selected?.name === t.name ? null : t)}
-            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50/50 hover:bg-gray-50 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <div className="text-left">
-              <span className="font-medium text-gray-900 text-sm">{t.name}</span>
-              <span className="ml-2 text-xs text-gray-400">{t.team}</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{t.name}</span>
+              <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{t.team}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{t.messages.length} messages</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{t.messages.length} messages</span>
               {t.unread > 0 && (
                 <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-500 text-white">
                   {t.unread}
@@ -382,18 +391,18 @@ function TeamsTab({ teams, selected, onSelect }: {
             </div>
           </button>
           {selected?.name === t.name && (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
               {t.messages.map((msg, i) => (
-                <div key={i} className={`p-4 ${!msg.read ? "bg-amber-50/30" : ""}`}>
+                <div key={i} className={`p-4 ${!msg.read ? "bg-amber-50/30 dark:bg-amber-950/20" : ""}`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-gray-700">{msg.from}</span>
-                    <span className="text-[10px] text-gray-400">{new Date(msg.timestamp).toLocaleString()}</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{msg.from}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(msg.timestamp).toLocaleString()}</span>
                     {!msg.read && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700">NEW</span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">NEW</span>
                     )}
                   </div>
-                  {msg.summary && <p className="text-sm font-medium text-gray-800 mb-1">{msg.summary}</p>}
-                  <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  {msg.summary && <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">{msg.summary}</p>}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 </div>
               ))}
             </div>

@@ -85,10 +85,10 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
         const isEditing = editingKey === key;
 
         return (
-          <div key={key} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div key={key} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{key}</span>
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">{key}</span>
                 {isReadOnly && <span className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">read-only</span>}
               </label>
               <div className="flex items-center gap-1">
@@ -119,7 +119,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                   <textarea
                     value={editBuffer}
                     onChange={(e) => { setEditBuffer(e.target.value); setParseError(null); }}
-                    className="w-full min-h-[200px] rounded-lg border border-gray-200 p-3 text-xs font-mono text-gray-700 leading-relaxed resize-y bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
+                    className="w-full min-h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-xs font-mono text-gray-700 dark:text-gray-300 leading-relaxed resize-y bg-gray-50/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
                     spellCheck={false}
                   />
                   {parseError && (
@@ -141,7 +141,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                   </div>
                 </div>
               ) : (
-                <pre className="text-xs font-mono text-gray-600 bg-gray-50 p-3 rounded-lg overflow-x-auto leading-relaxed">
+                <pre className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto leading-relaxed">
                   {JSON.stringify(value, null, 2)}
                 </pre>
               )
@@ -151,7 +151,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                 value={String(value)}
                 onChange={(e) => updateField(key, e.target.value)}
                 disabled={isReadOnly}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm font-mono disabled:bg-gray-50 dark:disabled:bg-gray-800/50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
               />
             )}
           </div>

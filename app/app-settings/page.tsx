@@ -24,7 +24,7 @@ interface UpdateInfo {
 }
 
 export default function AppSettingsPage() {
-  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile } = useAppSettingsStore();
+  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile, theme, setTheme } = useAppSettingsStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
@@ -51,37 +51,37 @@ export default function AppSettingsPage() {
   return (
     <div>
       <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">App Settings</h2>
-        <p className="mt-1 text-sm text-gray-500">Harness Hub application preferences</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">App Settings</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Harness Hub application preferences</p>
       </div>
 
       <div className="space-y-4">
         {/* Update Check */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-gray-900">Updates</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Check for new versions on GitHub</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Updates</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Check for new versions on GitHub</p>
             </div>
             <button
               onClick={checkForUpdates}
               disabled={checking}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {checking ? "Checking..." : "Check now"}
             </button>
           </div>
           {updateInfo && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
               {updateInfo.error ? (
                 <p className="text-sm text-red-500">{updateInfo.error}</p>
               ) : updateInfo.updateAvailable ? (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-amber-700">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                       New version available: v{updateInfo.latestVersion}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                       Current: v{updateInfo.currentVersion}
                       {updateInfo.publishedAt && ` · Released ${new Date(updateInfo.publishedAt).toLocaleDateString()}`}
                     </p>
@@ -108,16 +108,16 @@ export default function AppSettingsPage() {
         </div>
 
         {/* Polling */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-gray-900">Auto Refresh</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Automatically poll ~/.claude/ for changes</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Auto Refresh</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Automatically poll ~/.claude/ for changes</p>
             </div>
             <button
               onClick={() => setPollingEnabled(!pollingEnabled)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                pollingEnabled ? "bg-amber-500" : "bg-gray-200"
+                pollingEnabled ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"
               }`}
             >
               <span
@@ -128,8 +128,8 @@ export default function AppSettingsPage() {
             </button>
           </div>
           {pollingEnabled && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <label className="block text-sm text-gray-600 mb-2">Polling interval</label>
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Polling interval</label>
               <div className="flex gap-2 flex-wrap">
                 {INTERVAL_OPTIONS.map((opt) => (
                   <button
@@ -137,8 +137,8 @@ export default function AppSettingsPage() {
                     onClick={() => setPollingInterval(opt.value)}
                     className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                       pollingInterval === opt.value
-                        ? "border-amber-300 bg-amber-50 text-amber-700 font-medium"
-                        : "border-gray-200 text-gray-500 hover:border-gray-300"
+                        ? "border-amber-300 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium"
+                        : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                   >
                     {opt.label}
@@ -149,19 +149,42 @@ export default function AppSettingsPage() {
           )}
         </div>
 
+        {/* Theme */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">Theme</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Choose your preferred color scheme</p>
+          </div>
+          <div className="mt-4 flex gap-2 flex-wrap">
+            {(["system", "light", "dark"] as const).map((option) => (
+              <button
+                key={option}
+                onClick={() => setTheme(option)}
+                className={`px-4 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
+                  theme === option
+                    ? "border-amber-300 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium"
+                    : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+              >
+                {option === "system" ? "System default" : option.charAt(0).toUpperCase() + option.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Menu Order */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-gray-900">Menu Order</h3>
-              <p className="text-sm text-gray-500 mt-0.5">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Menu Order</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {navOrder ? "Custom order saved" : "Default order"} · Drag items in the sidebar to reorder
               </p>
             </div>
             {navOrder && (
               <button
                 onClick={resetNavOrder}
-                className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 Reset to default
               </button>
@@ -170,11 +193,11 @@ export default function AppSettingsPage() {
         </div>
 
         {/* Profiles */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-medium text-gray-900">Profiles</h3>
-              <p className="text-sm text-gray-500 mt-0.5">Manage multiple ~/.claude paths</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Profiles</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage multiple ~/.claude paths</p>
             </div>
             {!addingProfile && (
               <button
@@ -188,7 +211,7 @@ export default function AppSettingsPage() {
 
           <div className="space-y-2">
             {profiles.map((profile) => (
-              <div key={profile.id} className="rounded-lg border border-gray-100 bg-gray-50/50">
+              <div key={profile.id} className="rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
                 {editingProfile?.id === profile.id ? (
                   <div className="p-3 space-y-2">
                     <input
@@ -196,14 +219,14 @@ export default function AppSettingsPage() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Profile name"
-                      className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                      className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
                     />
                     <input
                       type="text"
                       value={editPath}
                       onChange={(e) => setEditPath(e.target.value)}
                       placeholder="/absolute/path/.claude"
-                      className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                      className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
                     />
                     <div className="flex gap-1.5">
                       <button
@@ -218,7 +241,7 @@ export default function AppSettingsPage() {
                       </button>
                       <button
                         onClick={() => setEditingProfile(null)}
-                        className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                       >
                         Cancel
                       </button>
@@ -228,22 +251,22 @@ export default function AppSettingsPage() {
                   <div className="flex items-center gap-3 px-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-medium text-gray-800">{profile.name}</span>
+                        <span className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{profile.name}</span>
                         {profile.id === activeProfileId && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">Active</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">Active</span>
                         )}
                         {profile.id === "default" && (
-                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">Default</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">Default</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 font-mono mt-0.5 truncate">
                         {profile.homePath === "auto" ? "~/.claude (auto)" : profile.homePath}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => { setEditingProfile(profile); setEditName(profile.name); setEditPath(profile.homePath === "auto" ? "" : profile.homePath); }}
-                        className="px-2 py-1 text-xs text-gray-400 hover:text-amber-600 transition-colors rounded hover:bg-amber-50"
+                        className="px-2 py-1 text-xs text-gray-400 hover:text-amber-600 transition-colors rounded hover:bg-amber-50 dark:hover:bg-amber-950"
                       >
                         Edit
                       </button>
@@ -252,13 +275,13 @@ export default function AppSettingsPage() {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => { removeProfile(profile.id); setConfirmDeleteId(null); }}
-                              className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors rounded hover:bg-red-50"
+                              className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors rounded hover:bg-red-50 dark:hover:bg-red-950"
                             >
                               Confirm
                             </button>
                             <button
                               onClick={() => setConfirmDeleteId(null)}
-                              className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                              className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
                             >
                               Cancel
                             </button>
@@ -266,7 +289,7 @@ export default function AppSettingsPage() {
                         ) : (
                           <button
                             onClick={() => setConfirmDeleteId(profile.id)}
-                            className="px-2 py-1 text-xs text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50"
+                            className="px-2 py-1 text-xs text-gray-400 hover:text-red-500 transition-colors rounded hover:bg-red-50 dark:hover:bg-red-950"
                           >
                             Delete
                           </button>
@@ -280,13 +303,13 @@ export default function AppSettingsPage() {
           </div>
 
           {addingProfile && (
-            <div className="mt-3 p-3 border border-amber-200 rounded-lg bg-amber-50/50 space-y-2">
+            <div className="mt-3 p-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50/50 dark:bg-amber-950/50 space-y-2">
               <input
                 type="text"
                 placeholder="Profile name"
                 value={newProfileName}
                 onChange={(e) => setNewProfileName(e.target.value)}
-                className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
                 autoFocus
               />
               <input
@@ -294,7 +317,7 @@ export default function AppSettingsPage() {
                 placeholder="/absolute/path/.claude"
                 value={newProfilePath}
                 onChange={(e) => setNewProfilePath(e.target.value)}
-                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
               />
               <div className="flex gap-1.5">
                 <button
@@ -311,7 +334,7 @@ export default function AppSettingsPage() {
                 </button>
                 <button
                   onClick={() => { setAddingProfile(false); setNewProfileName(""); setNewProfilePath(""); }}
-                  className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   Cancel
                 </button>
@@ -321,16 +344,16 @@ export default function AppSettingsPage() {
         </div>
 
         {/* About */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h3 className="font-medium text-gray-900">About</h3>
-          <div className="mt-3 space-y-2 text-sm text-gray-500">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <h3 className="font-medium text-gray-900 dark:text-gray-100">About</h3>
+          <div className="mt-3 space-y-2 text-sm text-gray-500 dark:text-gray-400">
             <div className="flex justify-between">
               <span>Version</span>
-              <span className="font-mono text-gray-700">{packageJson.version}</span>
+              <span className="font-mono text-gray-700 dark:text-gray-300">{packageJson.version}</span>
             </div>
             <div className="flex justify-between">
               <span>Data source</span>
-              <span className="font-mono text-gray-700">~/.claude/</span>
+              <span className="font-mono text-gray-700 dark:text-gray-300">~/.claude/</span>
             </div>
             <div className="flex justify-between">
               <span>Repository</span>

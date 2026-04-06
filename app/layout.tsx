@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
+import { ThemeProviderWrapper } from "@/components/theme-provider-wrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="flex h-screen bg-gray-50/80 text-gray-900 antialiased font-sans">
+      <body className="flex h-screen bg-gray-50/80 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans">
+        <ThemeProviderWrapper />
         <SidebarWrapper />
         <div className="flex flex-1 flex-col overflow-hidden min-w-0">
           <main className="flex-1 overflow-y-auto">

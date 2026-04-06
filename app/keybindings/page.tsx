@@ -31,18 +31,18 @@ export default function KeybindingsPage() {
     <div>
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Keybindings</h2>
-          <p className="mt-1 text-sm text-gray-500">Custom keyboard shortcuts for Claude Code</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Keybindings</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Custom keyboard shortcuts for Claude Code</p>
         </div>
         <RefreshButton onRefresh={refresh} />
       </div>
 
       {keybindings === null ? (
-        <div className="text-gray-400 pt-12 text-center">Loading...</div>
+        <div className="text-gray-400 dark:text-gray-500 pt-12 text-center">Loading...</div>
       ) : (
         <>
           {!exists && (
-            <p className="mb-4 text-xs text-gray-400">No keybindings.json found — saving will create it.</p>
+            <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">No keybindings.json found — saving will create it.</p>
           )}
           <JsonForm data={keybindings} onSave={saveKeybindings} />
         </>

@@ -38,7 +38,7 @@ export default function PluginsPage() {
   };
 
   if (error) return <div className="text-red-500 text-sm">{error}</div>;
-  if (!data) return <div className="text-gray-400 pt-12 text-center">Loading...</div>;
+  if (!data) return <div className="text-gray-400 dark:text-gray-500 pt-12 text-center">Loading...</div>;
 
   const plugins = Object.entries(data.installedPlugins);
 
@@ -46,43 +46,43 @@ export default function PluginsPage() {
     <div>
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Plugins</h2>
-          <p className="mt-1 text-sm text-gray-500">{plugins.length} installed</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Plugins</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{plugins.length} installed</p>
         </div>
         <RefreshButton onRefresh={refresh} />
       </div>
 
       {plugins.length === 0 ? (
-        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200">No plugins installed</div>
+        <div className="text-gray-400 dark:text-gray-500 text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">No plugins installed</div>
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden sm:block rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+          <div className="hidden sm:block rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50/50">
+              <thead className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400">Version</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400">Installed</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400">Active</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Version</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Installed</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">Active</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {plugins.map(([key, versions]) => {
                   const latest = versions[versions.length - 1];
                   const enabled = data.enabledPlugins[key] ?? false;
                   return (
-                    <tr key={key} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3.5 font-mono text-sm text-gray-900">{key}</td>
-                      <td className="px-4 py-3.5 text-gray-500 tabular-nums">{latest?.version}</td>
-                      <td className="px-4 py-3.5 text-gray-500">
+                    <tr key={key} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="px-4 py-3.5 font-mono text-sm text-gray-900 dark:text-gray-100">{key}</td>
+                      <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400 tabular-nums">{latest?.version}</td>
+                      <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400">
                         {latest?.installedAt ? new Date(latest.installedAt).toLocaleDateString() : "-"}
                       </td>
                       <td className="px-4 py-3.5">
                         <button
                           onClick={() => togglePlugin(key, !enabled)}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            enabled ? "bg-amber-500" : "bg-gray-200"
+                            enabled ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"
                           }`}
                         >
                           <span
@@ -105,13 +105,13 @@ export default function PluginsPage() {
               const latest = versions[versions.length - 1];
               const enabled = data.enabledPlugins[key] ?? false;
               return (
-                <div key={key} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div key={key} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm text-gray-900 truncate mr-3">{key}</span>
+                    <span className="font-mono text-sm text-gray-900 dark:text-gray-100 truncate mr-3">{key}</span>
                     <button
                       onClick={() => togglePlugin(key, !enabled)}
                       className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        enabled ? "bg-amber-500" : "bg-gray-200"
+                        enabled ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"
                       }`}
                     >
                       <span
@@ -121,7 +121,7 @@ export default function PluginsPage() {
                       />
                     </button>
                   </div>
-                  <div className="mt-2 flex gap-4 text-xs text-gray-400">
+                  <div className="mt-2 flex gap-4 text-xs text-gray-400 dark:text-gray-500">
                     <span>v{latest?.version}</span>
                     <span>{latest?.installedAt ? new Date(latest.installedAt).toLocaleDateString() : ""}</span>
                   </div>

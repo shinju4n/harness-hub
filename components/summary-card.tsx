@@ -26,7 +26,7 @@ export function SummaryCard({ title, value, subtitle, href, icon, color = "amber
   return (
     <Link
       href={href}
-      className={`group block rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:shadow-lg hover:-translate-y-0.5 ring-1 ring-transparent ${c.ring}`}
+      className={`group block rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 transition-all hover:shadow-lg hover:-translate-y-0.5 ring-1 ring-transparent ${c.ring}`}
     >
       <div className="flex items-start justify-between">
         <div className={`p-2.5 rounded-xl ${c.bg}`}>
@@ -37,9 +37,9 @@ export function SummaryCard({ title, value, subtitle, href, icon, color = "amber
         </svg>
       </div>
       <div className="mt-4">
-        <p className="text-3xl font-bold text-gray-900 tabular-nums tracking-tight">{value}</p>
-        <p className="mt-1 text-sm font-medium text-gray-500">{title}</p>
-        {subtitle && <p className="mt-0.5 text-xs text-gray-400">{subtitle}</p>}
+        <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 tabular-nums tracking-tight">{value}</p>
+        <p className="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+        {subtitle && <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{subtitle}</p>}
       </div>
     </Link>
   );

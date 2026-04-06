@@ -35,6 +35,32 @@ const icons: Record<string, React.ReactNode> = {
   gear: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
 };
 
+function ThemeToggleButton() {
+  const { theme, setTheme } = useAppSettingsStore();
+
+  const cycleTheme = () => {
+    if (theme === "system") setTheme("light");
+    else if (theme === "light") setTheme("dark");
+    else setTheme("system");
+  };
+
+  return (
+    <button
+      onClick={cycleTheme}
+      title={`Theme: ${theme}`}
+      className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+    >
+      {theme === "dark" ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      ) : theme === "light" ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      )}
+    </button>
+  );
+}
+
 function getOrderedItems(navOrder: string[] | null) {
   if (!navOrder) return DEFAULT_NAV_ITEMS;
   const itemMap = new Map(DEFAULT_NAV_ITEMS.map((item) => [item.href, item]));
@@ -105,11 +131,11 @@ function ProfileDropdown() {
       {switching && <LoadingOverlay />}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors group"
+        className="w-full text-left px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group"
       >
         <div className="flex items-center justify-between">
           <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 tracking-tight">Harness Hub</h1>
+            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Harness Hub</h1>
             <p className="text-xs text-amber-600 font-medium mt-0.5 truncate" suppressHydrationWarning>{mounted ? activeProfile.name : "\u00A0"}</p>
           </div>
           <svg
@@ -120,7 +146,7 @@ function ProfileDropdown() {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className={`shrink-0 ml-2 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+            className={`shrink-0 ml-2 text-gray-400 dark:text-gray-500 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
           >
             <path d="m6 9 6 6 6-6"/>
           </svg>
@@ -128,17 +154,17 @@ function ProfileDropdown() {
       </button>
 
       {dropdownOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-b-xl shadow-lg overflow-hidden">
+        <div className="absolute left-0 right-0 top-full z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-xl shadow-lg overflow-hidden">
           <div className="py-1">
             {profiles.map((profile) => (
               <div
                 key={profile.id}
-                className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group/item"
+                className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors group/item"
                 onClick={() => handleProfileSelect(profile.id)}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-gray-800 truncate">{profile.name}</p>
-                  <p className="text-[11px] text-gray-400 font-mono truncate">
+                  <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate">{profile.name}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate">
                     {profile.homePath === "auto" ? "~/.claude (auto)" : profile.homePath}
                   </p>
                 </div>
@@ -150,7 +176,7 @@ function ProfileDropdown() {
                 {profile.id !== "default" && (
                   <button
                     onClick={(e) => handleRemove(e, profile.id)}
-                    className="opacity-0 group-hover/item:opacity-100 shrink-0 text-gray-300 hover:text-red-500 transition-all"
+                    className="opacity-0 group-hover/item:opacity-100 shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-all"
                     title="Remove profile"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -160,7 +186,7 @@ function ProfileDropdown() {
             ))}
           </div>
 
-          <div className="border-t border-gray-100">
+          <div className="border-t border-gray-100 dark:border-gray-800">
             {showAddForm ? (
               <div className="p-3 space-y-2">
                 <input
@@ -168,7 +194,7 @@ function ProfileDropdown() {
                   placeholder="Profile name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
                   autoFocus
                 />
                 <div className="flex gap-1">
@@ -177,12 +203,12 @@ function ProfileDropdown() {
                     placeholder="/absolute/path/.claude"
                     value={newPath}
                     onChange={(e) => setNewPath(e.target.value)}
-                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
-                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     title="Browse"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
@@ -212,7 +238,7 @@ function ProfileDropdown() {
                   </button>
                   <button
                     onClick={() => { setShowAddForm(false); setNewName(""); setNewPath(""); }}
-                    className="flex-1 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    className="flex-1 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                   >
                     Cancel
                   </button>
@@ -221,7 +247,7 @@ function ProfileDropdown() {
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }}
-                className="w-full px-4 py-2.5 text-[13px] text-amber-600 hover:bg-amber-50 transition-colors text-left"
+                className="w-full px-4 py-2.5 text-[13px] text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors text-left"
               >
                 + Add Profile
               </button>
@@ -277,7 +303,7 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white border border-gray-200 shadow-sm lg:hidden"
+        className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm lg:hidden"
         aria-label="Open menu"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -295,7 +321,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 bg-white flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -316,19 +342,20 @@ export function Sidebar() {
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-all cursor-grab active:cursor-grabbing ${
                   active
-                    ? "bg-amber-50 text-amber-800 font-medium"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
                 } ${isOver ? "border-t-2 border-amber-400" : "border-t-2 border-transparent"}`}
               >
-                <span className={active ? "text-amber-600" : "text-gray-400"}>{icons[item.icon]}</span>
+                <span className={active ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500"}>{icons[item.icon]}</span>
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-5 py-3 border-t border-gray-100 text-[11px] text-gray-400">
-          Claude Code Harness Manager
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">Claude Code Harness Manager</span>
+          <ThemeToggleButton />
         </div>
       </aside>
     </>

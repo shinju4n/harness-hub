@@ -24,8 +24,8 @@ export default function DashboardPage() {
 
   if (loading && !config) {
     return (
-      <div className="flex items-center gap-2 text-gray-400 pt-12 justify-center">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-amber-500" />
+      <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500 pt-12 justify-center">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-amber-500" />
         Loading...
       </div>
     );
@@ -33,7 +33,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-600 text-sm">
+      <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 p-6 text-red-600 dark:text-red-400 text-sm">
         <p className="font-medium">Failed to load configuration</p>
         <p className="mt-1 text-red-500">{error}</p>
       </div>
@@ -48,8 +48,8 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Overview of your Claude Code harness
             {pollingEnabled && (
               <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-500">

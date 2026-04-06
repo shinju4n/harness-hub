@@ -6,13 +6,16 @@ import remarkGfm from "remark-gfm";
 
 interface MarkdownViewerProps {
   content: string;
+  /** Full raw file content including frontmatter. When provided, edit mode operates on this instead of just the body. */
+  rawContent?: string;
   fileName?: string;
   onSave?: (content: string) => Promise<void>;
 }
 
-export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProps) {
+export function MarkdownViewer({ content, rawContent, fileName, onSave }: MarkdownViewerProps) {
+  const editSource = rawContent ?? content;
   const [mode, setMode] = useState<"preview" | "raw" | "edit">("preview");
-  const [editContent, setEditContent] = useState(content);
+  const [editContent, setEditContent] = useState(editSource);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -24,21 +27,21 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
   };
 
   const handleCancel = () => {
-    setEditContent(content);
+    setEditContent(editSource);
     setMode("preview");
   };
 
   const startEdit = () => {
-    setEditContent(content);
+    setEditContent(editSource);
     setMode("edit");
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 bg-gray-50/50 gap-2">
+      <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-4 py-2.5 bg-gray-50/50 dark:bg-gray-800/50 gap-2">
         {fileName ? (
-          <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded truncate max-w-[50%]">
+          <span className="text-xs font-mono text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded truncate max-w-[50%]">
             {fileName}
           </span>
         ) : (
@@ -49,7 +52,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
             <div className="flex gap-1.5">
               <button
                 onClick={handleCancel}
-                className="px-3 py-1 text-xs text-gray-500 rounded-md hover:bg-gray-100 transition-colors"
+                className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
@@ -63,13 +66,13 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
             </div>
           ) : (
             <>
-              <div className="flex gap-0.5 rounded-lg bg-gray-100 p-0.5">
+              <div className="flex gap-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 p-0.5">
                 <button
                   onClick={() => setMode("preview")}
                   className={`px-3 py-1 text-xs rounded-md transition-all ${
                     mode === "preview"
-                      ? "bg-white text-gray-900 shadow-sm font-medium"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm font-medium"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                   }`}
                 >
                   Preview
@@ -78,8 +81,8 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
                   onClick={() => setMode("raw")}
                   className={`px-3 py-1 text-xs rounded-md transition-all ${
                     mode === "raw"
-                      ? "bg-white text-gray-900 shadow-sm font-medium"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm font-medium"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                   }`}
                 >
                   Raw
@@ -88,7 +91,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
               {onSave && (
                 <button
                   onClick={startEdit}
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 rounded-md border border-gray-200 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
@@ -107,7 +110,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full min-h-[400px] sm:min-h-[500px] p-4 font-mono text-sm text-gray-700 leading-relaxed resize-y rounded-lg border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
+            className="w-full min-h-[400px] sm:min-h-[500px] p-4 font-mono text-sm text-gray-700 dark:text-gray-300 leading-relaxed resize-y rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
             spellCheck={false}
           />
         </div>
@@ -119,7 +122,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
                 remarkPlugins={[remarkGfm]}
                 components={{
                   pre: ({ children, ...props }) => (
-                    <pre className="not-prose relative rounded-xl border border-gray-200 bg-gray-50 p-4 overflow-x-auto text-[13px] leading-6 my-4" {...props}>
+                    <pre className="not-prose relative rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 overflow-x-auto text-[13px] leading-6 my-4" {...props}>
                       {children}
                     </pre>
                   ),
@@ -127,13 +130,13 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
                     const isBlock = className?.startsWith("language-");
                     if (isBlock) {
                       return (
-                        <code className={`${className} text-gray-700 font-mono`} {...props}>
+                        <code className={`${className} text-gray-700 dark:text-gray-300 font-mono`} {...props}>
                           {children}
                         </code>
                       );
                     }
                     return (
-                      <code className="bg-gray-100/80 text-gray-800 text-[0.85em] font-medium font-mono px-1.5 py-0.5 rounded-md border border-gray-200/50" {...props}>
+                      <code className="bg-gray-100/80 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-[0.85em] font-medium font-mono px-1.5 py-0.5 rounded-md border border-gray-200/50 dark:border-gray-700" {...props}>
                         {children}
                       </code>
                     );
@@ -204,7 +207,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
               </ReactMarkdown>
             </article>
           ) : (
-            <pre className="text-xs sm:text-sm font-mono text-gray-600 whitespace-pre-wrap leading-relaxed break-words">
+            <pre className="text-xs sm:text-sm font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed break-words">
               {content}
             </pre>
           )}
