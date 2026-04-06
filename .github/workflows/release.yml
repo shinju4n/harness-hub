@@ -38,11 +38,21 @@ jobs:
       - name: Build Next.js
         run: pnpm build
 
+      - name: Dereference symlinks in standalone (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $src = ".next/standalone"
+          $dst = ".next/standalone-real"
+          Copy-Item -Path $src -Destination $dst -Recurse -Force
+          Remove-Item -Path $src -Recurse -Force
+          Rename-Item -Path $dst -NewName "standalone"
+
       - name: Compile Electron
         run: pnpm tsc -p tsconfig.electron.json
 
       - name: Build Electron app
-        run: pnpm electron-builder ${{ matrix.args }}
+        run: pnpm electron-builder ${{ matrix.args }} --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
