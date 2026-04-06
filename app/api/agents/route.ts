@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
 
   if (tab === "definitions") {
     if (agentName) {
+      if (agentName.includes("..") || agentName.includes("/") || agentName.includes("\\")) {
+        return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+      }
       // Return single agent content
       const agentsDir = path.join(claudeHome, "agents");
       const filePath = path.join(agentsDir, `${agentName}.md`);
@@ -72,6 +75,9 @@ export async function POST(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const dir = path.join(claudeHome, "agents");
   await mkdir(dir, { recursive: true });
   const filePath = path.join(dir, `${name}.md`);
@@ -87,6 +93,9 @@ export async function DELETE(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const filePath = path.join(claudeHome, "agents", `${name}.md`);
   try {
     const { unlink } = await import("fs/promises");
@@ -103,6 +112,9 @@ export async function PUT(request: NextRequest) {
 
   if (!name || typeof content !== "string") {
     return NextResponse.json({ error: "name and content required" }, { status: 400 });
+  }
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
   }
 
   const filePath = path.join(claudeHome, "agents", `${name}.md`);

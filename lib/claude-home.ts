@@ -3,7 +3,11 @@ import path from "path";
 
 export function getClaudeHome(override?: string | null): string {
   if (override && override !== "auto") {
-    return override;
+    const resolved = path.resolve(override);
+    if (!path.isAbsolute(resolved)) {
+      throw new Error("Claude home path must be absolute");
+    }
+    return resolved;
   }
 
   if (process.env.CLAUDE_HOME) {

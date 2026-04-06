@@ -10,9 +10,10 @@ export function getApiHeaders(): Record<string, string> {
 }
 
 export async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
-  const headers = {
-    ...getApiHeaders(),
-    ...(options?.headers as Record<string, string> | undefined),
-  };
-  return fetch(url, { ...options, headers });
+  const profileHeaders = getApiHeaders();
+  const merged = new Headers(options?.headers);
+  for (const [key, value] of Object.entries(profileHeaders)) {
+    if (!merged.has(key)) merged.set(key, value);
+  }
+  return fetch(url, { ...options, headers: merged });
 }

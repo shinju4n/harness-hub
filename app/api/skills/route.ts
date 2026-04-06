@@ -11,6 +11,9 @@ export async function GET(request: NextRequest) {
   const pluginName = request.nextUrl.searchParams.get("plugin");
 
   if (skillName) {
+    if (skillName.includes("..") || skillName.includes("/") || skillName.includes("\\")) {
+      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+    }
     let skillPath: string;
     if (source === "custom") {
       const dirPath = path.join(claudeHome, "skills", skillName);
@@ -37,6 +40,9 @@ export async function POST(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const dirPath = path.join(claudeHome, "skills", name);
   await mkdir(dirPath, { recursive: true });
   const filePath = path.join(dirPath, "SKILL.md");
@@ -52,6 +58,9 @@ export async function DELETE(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const dirPath = path.join(claudeHome, "skills", name);
   try {
     await rm(dirPath, { recursive: true, force: true });
@@ -67,6 +76,9 @@ export async function PUT(request: NextRequest) {
 
   if (!name || typeof content !== "string") {
     return NextResponse.json({ error: "name and content required" }, { status: 400 });
+  }
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
   }
 
   const dirPath = path.join(claudeHome, "skills", name);

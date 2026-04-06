@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
   const name = request.nextUrl.searchParams.get("name");
 
   if (name) {
+    if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+      return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+    }
     const result = await readMarkdownFile(path.join(claudeHome, "rules", `${name}.md`));
     if (result.data) {
       return NextResponse.json({ content: result.data.content, frontmatter: result.data.frontmatter });
@@ -37,6 +40,9 @@ export async function POST(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const dir = path.join(claudeHome, "rules");
   await mkdir(dir, { recursive: true });
   const filePath = path.join(dir, `${name}.md`);
@@ -52,6 +58,9 @@ export async function DELETE(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
+  }
   const filePath = path.join(claudeHome, "rules", `${name}.md`);
   try {
     const { unlink } = await import("fs/promises");
@@ -68,6 +77,9 @@ export async function PUT(request: NextRequest) {
 
   if (!name || typeof content !== "string") {
     return NextResponse.json({ error: "name and content required" }, { status: 400 });
+  }
+  if (name.includes("..") || name.includes("/") || name.includes("\\")) {
+    return NextResponse.json({ error: "Invalid name" }, { status: 400 });
   }
 
   const filePath = path.join(claudeHome, "rules", `${name}.md`);

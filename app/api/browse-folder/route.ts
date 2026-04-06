@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readdir, stat } from "fs/promises";
-import path from "path";
+import path, { resolve } from "path";
 import os from "os";
 
 export async function GET(request: NextRequest) {
-  const dir = request.nextUrl.searchParams.get("path") || os.homedir();
+  const homeDir = os.homedir();
+  const rawDir = request.nextUrl.searchParams.get("path") || homeDir;
+  const dir = resolve(rawDir);
+
+  if (!dir.startsWith(homeDir)) {
+    return NextResponse.json(
+      { error: "Access denied: can only browse under home directory" },
+      { status: 403 }
+    );
+  }
 
   try {
     const entries = await readdir(dir, { withFileTypes: true });

@@ -24,7 +24,7 @@ interface UpdateInfo {
 }
 
 export default function AppSettingsPage() {
-  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile } = useAppSettingsStore();
+  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile } = useAppSettingsStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
@@ -209,8 +209,7 @@ export default function AppSettingsPage() {
                       <button
                         onClick={() => {
                           if (!editName.trim()) return;
-                          removeProfile(profile.id);
-                          addProfile(editName.trim(), editPath.trim() || "auto");
+                          updateProfile(profile.id, editName.trim(), editPath.trim() || "auto");
                           setEditingProfile(null);
                         }}
                         className="px-3 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"

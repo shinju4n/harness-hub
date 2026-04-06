@@ -19,6 +19,7 @@ interface AppSettingsState {
   resetNavOrder: () => void;
   addProfile: (name: string, homePath: string) => void;
   removeProfile: (id: string) => void;
+  updateProfile: (id: string, name: string, homePath: string) => void;
   setActiveProfile: (id: string) => void;
   getActiveProfile: () => Profile;
 }
@@ -38,7 +39,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       setNavOrder: (order) => set({ navOrder: order }),
       resetNavOrder: () => set({ navOrder: null }),
       addProfile: (name, homePath) => {
-        const id = `profile-${Date.now()}`;
+        const id = `profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         set((state) => ({
           profiles: [...state.profiles, { id, name, homePath }],
         }));
@@ -49,6 +50,13 @@ export const useAppSettingsStore = create<AppSettingsState>()(
           activeProfileId: state.activeProfileId === id ? "default" : state.activeProfileId,
         }));
       },
+      updateProfile: (id, name, homePath) => {
+        set((state) => ({
+          profiles: state.profiles.map((p) =>
+            p.id === id ? { ...p, name, homePath } : p
+          ),
+        }));
+      },
       setActiveProfile: (id) => set({ activeProfileId: id }),
       getActiveProfile: () => {
         const { profiles, activeProfileId } = get();
@@ -57,6 +65,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     }),
     {
       name: "harness-hub-settings",
+      version: 1,
+      migrate: (persisted: unknown) => persisted,
     }
   )
 );
