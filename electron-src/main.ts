@@ -164,10 +164,11 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  killNextServer();
   if (process.platform !== "darwin") {
+    killNextServer();
     app.quit();
   }
+  // macOS: keep server running, window will reopen on activate
 });
 
 app.on("before-quit", () => {
