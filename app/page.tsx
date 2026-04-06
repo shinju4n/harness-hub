@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { SummaryCard } from "@/components/summary-card";
 import { useConfigStore } from "@/stores/config-store";
 
 export default function DashboardPage() {
   const { config, loading, error, fetchConfig } = useConfigStore();
+  const fetched = useRef(false);
 
   useEffect(() => {
-    fetchConfig();
+    if (!fetched.current) {
+      fetched.current = true;
+      fetchConfig();
+    }
   }, [fetchConfig]);
 
   if (loading) {
