@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 
 const DEFAULT_NAV_ITEMS = [
@@ -44,6 +44,155 @@ function getOrderedItems(navOrder: string[] | null) {
     if (!navOrder.includes(item.href)) ordered.push(item);
   }
   return ordered;
+}
+
+function ProfileDropdown() {
+  const { profiles, activeProfileId, setActiveProfile, addProfile, removeProfile, getActiveProfile } = useAppSettingsStore();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPath, setNewPath] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const activeProfile = getActiveProfile();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+        setShowAddForm(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
+
+  const handleProfileSelect = (id: string) => {
+    setActiveProfile(id);
+    setDropdownOpen(false);
+    window.location.reload();
+  };
+
+  const handleAdd = () => {
+    if (!newName.trim() || !newPath.trim()) return;
+    addProfile(newName.trim(), newPath.trim());
+    setNewName("");
+    setNewPath("");
+    setShowAddForm(false);
+  };
+
+  const handleRemove = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    removeProfile(id);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setDropdownOpen(!dropdownOpen)}
+        className="w-full text-left px-5 py-4 border-b border-gray-100 hover:bg-gray-50/50 transition-colors group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-gray-900 tracking-tight">Harness Hub</h1>
+            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate">{activeProfile.name}</p>
+          </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className={`shrink-0 ml-2 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+          >
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </div>
+      </button>
+
+      {dropdownOpen && (
+        <div className="absolute left-0 right-0 top-full z-50 bg-white border border-gray-200 rounded-b-xl shadow-lg overflow-hidden">
+          <div className="py-1">
+            {profiles.map((profile) => (
+              <div
+                key={profile.id}
+                className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors group/item"
+                onClick={() => handleProfileSelect(profile.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-gray-800 truncate">{profile.name}</p>
+                  <p className="text-[11px] text-gray-400 font-mono truncate">
+                    {profile.homePath === "auto" ? "~/.claude (auto)" : profile.homePath}
+                  </p>
+                </div>
+                {profile.id === activeProfileId && (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-amber-500 shrink-0">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                )}
+                {profile.id !== "default" && (
+                  <button
+                    onClick={(e) => handleRemove(e, profile.id)}
+                    className="opacity-0 group-hover/item:opacity-100 shrink-0 text-gray-300 hover:text-red-500 transition-all"
+                    title="Remove profile"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-gray-100">
+            {showAddForm ? (
+              <div className="p-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Profile name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  placeholder="/absolute/path/.claude"
+                  value={newPath}
+                  onChange={(e) => setNewPath(e.target.value)}
+                  className="w-full text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:border-amber-400"
+                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                />
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleAdd}
+                    className="flex-1 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowAddForm(false); setNewName(""); setNewPath(""); }}
+                    className="flex-1 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }}
+                className="w-full px-4 py-2.5 text-[13px] text-amber-600 hover:bg-amber-50 transition-colors text-left"
+              >
+                + Add Profile
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Sidebar() {
@@ -112,10 +261,7 @@ export function Sidebar() {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h1 className="text-base font-semibold text-gray-900 tracking-tight">Harness Hub</h1>
-          <p className="text-xs text-gray-400 font-mono mt-0.5">~/.claude</p>
-        </div>
+        <ProfileDropdown />
 
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {items.map((item, index) => {
