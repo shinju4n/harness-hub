@@ -13,6 +13,10 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editBuffer, setEditBuffer] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
+  const [addingKey, setAddingKey] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
+  const [newValueError, setNewValueError] = useState<string | null>(null);
 
   const updateField = (key: string, value: string) => {
     setFormData((prev) => {
@@ -21,6 +25,14 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
       } catch {
         return { ...prev, [key]: value };
       }
+    });
+  };
+
+  const deleteField = (key: string) => {
+    setFormData((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
     });
   };
 
@@ -46,6 +58,25 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
     setParseError(null);
   };
 
+  const addField = () => {
+    if (!newKey.trim()) return;
+    if (newKey in formData) {
+      setNewValueError("Key already exists");
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(newValue);
+    } catch {
+      parsed = newValue;
+    }
+    setFormData((prev) => ({ ...prev, [newKey.trim()]: parsed }));
+    setNewKey("");
+    setNewValue("");
+    setNewValueError(null);
+    setAddingKey(false);
+  };
+
   return (
     <div className="space-y-3">
       {Object.entries(formData).map(([key, value]) => {
@@ -60,17 +91,27 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                 <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{key}</span>
                 {isReadOnly && <span className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">read-only</span>}
               </label>
-              {isObject && !isReadOnly && !isEditing && (
-                <button
-                  onClick={() => startEditObject(key, value)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 rounded-md border border-gray-200 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
-                  </svg>
-                  Edit
-                </button>
-              )}
+              <div className="flex items-center gap-1">
+                {isObject && !isReadOnly && !isEditing && (
+                  <button
+                    onClick={() => startEditObject(key, value)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 rounded-md border border-gray-200 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
+                    </svg>
+                    Edit
+                  </button>
+                )}
+                {!isReadOnly && (
+                  <button
+                    onClick={() => deleteField(key)}
+                    className="px-2 py-1 text-xs text-gray-400 rounded-md hover:bg-red-50 hover:text-red-500 transition-colors"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
             {isObject ? (
               isEditing ? (
@@ -116,6 +157,54 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
           </div>
         );
       })}
+
+      {/* Add new field */}
+      {addingKey ? (
+        <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/30 p-4">
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={newKey}
+              onChange={(e) => { setNewKey(e.target.value); setNewValueError(null); }}
+              placeholder="Key name"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
+              autoFocus
+            />
+            <textarea
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              placeholder='Value (string or JSON, e.g. "hello" or {"key": "value"})'
+              className="w-full min-h-[80px] rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
+              spellCheck={false}
+            />
+            {newValueError && (
+              <p className="text-xs text-red-500">{newValueError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={addField}
+                className="px-3 py-1.5 text-xs text-white bg-amber-600 rounded-md hover:bg-amber-700 transition-colors font-medium"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => { setAddingKey(false); setNewKey(""); setNewValue(""); setNewValueError(null); }}
+                className="px-3 py-1.5 text-xs text-gray-500 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAddingKey(true)}
+          className="w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/30 transition-colors"
+        >
+          + Add field
+        </button>
+      )}
+
       <button
         onClick={() => onSave(formData)}
         className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors font-medium"
