@@ -26,17 +26,15 @@ export function waitForServer(url: string, timeoutMs: number): Promise<void> {
         return;
       }
       http
-        .get(url + "/api/config", (res) => {
-          let body = "";
-          res.on("data", (chunk: Buffer) => { body += chunk.toString(); });
-          res.on("end", () => {
-            // Verify this is actually our Harness Hub server
-            if (res.statusCode && res.statusCode < 500 && body.includes("plugins")) {
-              resolve();
-            } else {
-              setTimeout(check, 300);
-            }
-          });
+        .get(url, (res) => {
+          // Any response means the server is up
+          // Consume the response body to free resources
+          res.resume();
+          if (res.statusCode && res.statusCode < 500) {
+            resolve();
+          } else {
+            setTimeout(check, 300);
+          }
         })
         .on("error", () => {
           setTimeout(check, 300);

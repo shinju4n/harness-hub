@@ -5,7 +5,7 @@ import { findAvailablePort, waitForServer } from "./server-utils";
 
 let mainWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | null = null;
-let serverPort = 3000;
+let serverPort = 13100;
 
 const isDev = !app.isPackaged;
 
@@ -18,7 +18,7 @@ function getAppPath(): string {
 }
 
 async function startNextServer(): Promise<void> {
-  serverPort = await findAvailablePort(3000);
+  serverPort = await findAvailablePort(13100);
   const appPath = getAppPath();
 
   if (isDev) {
