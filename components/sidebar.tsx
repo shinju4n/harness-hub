@@ -54,7 +54,11 @@ function ProfileDropdown() {
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
   const [showBrowse, setShowBrowse] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
   const activeProfile = getActiveProfile();
 
   useEffect(() => {
@@ -101,7 +105,7 @@ function ProfileDropdown() {
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <h1 className="text-base font-semibold text-gray-900 tracking-tight">Harness Hub</h1>
-            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate">{activeProfile.name}</p>
+            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate">{mounted ? activeProfile.name : "Default"}</p>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -181,7 +185,16 @@ function ProfileDropdown() {
                 </div>
                 {showBrowse && (
                   <FolderPicker
-                    onSelect={(p) => { setNewPath(p); setShowBrowse(false); }}
+                    onSelect={(p) => {
+                      // Auto-generate name from folder path
+                      const name = newName.trim() || p.split("/").filter(Boolean).pop() || "Profile";
+                      addProfile(name, p);
+                      setShowBrowse(false);
+                      setShowAddForm(false);
+                      setNewName("");
+                      setNewPath("");
+                      setDropdownOpen(false);
+                    }}
                     onClose={() => setShowBrowse(false)}
                   />
                 )}
