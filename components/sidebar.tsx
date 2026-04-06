@@ -110,7 +110,7 @@ function ProfileDropdown() {
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <h1 className="text-base font-semibold text-gray-900 tracking-tight">Harness Hub</h1>
-            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate">{mounted ? activeProfile.name : "Default"}</p>
+            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate" suppressHydrationWarning>{mounted ? activeProfile.name : "\u00A0"}</p>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg"
