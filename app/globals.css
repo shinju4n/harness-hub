@@ -8,65 +8,41 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* Markdown prose overrides */
-.prose {
-  --tw-prose-body: var(--color-gray-700);
-  --tw-prose-headings: var(--color-gray-900);
-  --tw-prose-links: var(--color-accent);
-  --tw-prose-code: var(--color-gray-800);
-  --tw-prose-pre-bg: var(--color-gray-50);
-  --tw-prose-pre-code: var(--color-gray-700);
-  --tw-prose-counters: var(--color-gray-500);
-  --tw-prose-bullets: var(--color-gray-400);
-  --tw-prose-hr: var(--color-gray-200);
-  --tw-prose-th-borders: var(--color-gray-200);
-  --tw-prose-td-borders: var(--color-gray-100);
+/* Scrollbar styling for code blocks */
+pre::-webkit-scrollbar {
+  height: 6px;
 }
 
-.prose :where(code):not(:where(pre *)) {
-  background-color: var(--color-gray-100);
-  border-radius: 0.25rem;
-  padding: 0.15em 0.4em;
-  font-size: 0.85em;
-  font-weight: 500;
+pre::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.prose :where(code):not(:where(pre *))::before,
-.prose :where(code):not(:where(pre *))::after {
-  content: "";
+pre::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: 3px;
 }
 
-.prose :where(pre) {
-  border: 1px solid var(--color-gray-200);
-  border-radius: 0.75rem;
-  overflow-x: auto;
+/* Table scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
 }
 
-.prose :where(table) {
-  font-size: 0.875em;
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.prose :where(th) {
-  font-weight: 600;
-  background-color: var(--color-gray-50);
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: var(--color-gray-200);
+  border-radius: 2px;
 }
 
-.prose :where(blockquote) {
-  border-left-color: var(--color-accent);
-  background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
-  border-radius: 0 0.5rem 0.5rem 0;
-  padding: 0.75rem 1rem;
+/* Word breaking for long inline code */
+.prose code {
+  word-break: break-word;
 }
 
-.prose :where(h1, h2, h3, h4) {
-  scroll-margin-top: 4rem;
-}
-
-.prose :where(a) {
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.prose :where(a):hover {
-  text-decoration: underline;
+/* Ensure prose images don't overflow */
+.prose img {
+  max-width: 100%;
+  height: auto;
 }
