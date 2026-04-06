@@ -1,18 +1,18 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
 import path from "path";
 
+// NOTE: jsdom@29 + lru-cache@11 have a Node 22 TLA incompatibility.
+// Store tests (Zustand) don't require DOM APIs so we use "node" environment.
+// Switch to "jsdom" once the upstream lru-cache ESM/TLA issue is resolved.
 export default defineConfig({
-  plugins: [react()],
   test: {
-    environment: "jsdom",
+    environment: "node",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["**/*.test.ts", "**/*.test.tsx"],
-    pool: "vmForks",
+    include: ["stores/**/*.test.ts", "stores/**/*.test.tsx", "**/*.test.tsx"],
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "."),
+      "@": path.resolve(import.meta.dirname, "."),
     },
   },
 });
