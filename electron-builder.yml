@@ -36,8 +36,10 @@ mac:
         - arm64
         - x64
   category: public.app-category.developer-tools
-  identity: null
   icon: build/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: true
 win:
   target:
     - target: nsis
