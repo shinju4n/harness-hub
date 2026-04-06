@@ -15,6 +15,7 @@ mac:
         - arm64
         - x64
   category: public.app-category.developer-tools
+  identity: null
 win:
   target:
     - target: nsis
