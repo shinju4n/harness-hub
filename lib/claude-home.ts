@@ -3,9 +3,19 @@ import path from "path";
 
 export function getClaudeHome(override?: string | null): string {
   if (override && override !== "auto") {
-    const resolved = path.resolve(override);
+    let resolved = path.resolve(override);
     if (!path.isAbsolute(resolved)) {
       throw new Error("Claude home path must be absolute");
+    }
+    // If path doesn't end with .claude, check if .claude subdir exists
+    if (!resolved.endsWith(".claude")) {
+      const withClaude = path.join(resolved, ".claude");
+      try {
+        const fs = require("fs");
+        if (fs.existsSync(withClaude)) {
+          resolved = withClaude;
+        }
+      } catch {}
     }
     return resolved;
   }
