@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { SummaryCard } from "@/components/summary-card";
+import { RefreshButton } from "@/components/refresh-button";
 import { useConfigStore } from "@/stores/config-store";
+import { usePolling } from "@/lib/use-polling";
 
 export default function DashboardPage() {
   const { config, loading, error, fetchConfig } = useConfigStore();
-  const fetched = useRef(false);
+  const { refresh } = usePolling(fetchConfig);
 
-  useEffect(() => {
-    if (!fetched.current) {
-      fetched.current = true;
-      fetchConfig();
-    }
-  }, [fetchConfig]);
-
-  if (loading) {
+  if (loading && !config) {
     return (
       <div className="flex items-center gap-2 text-gray-400 pt-12 justify-center">
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-amber-500" />
@@ -39,9 +33,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Dashboard</h2>
-        <p className="mt-1 text-sm text-gray-500">Overview of your Claude Code harness</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Dashboard</h2>
+          <p className="mt-1 text-sm text-gray-500">Overview of your Claude Code harness</p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <SummaryCard
