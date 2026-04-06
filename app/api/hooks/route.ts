@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClaudeHome } from "@/lib/claude-home";
+import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
 
-export async function GET() {
-  const claudeHome = getClaudeHome();
+export async function GET(request: NextRequest) {
+  const claudeHome = getClaudeHomeFromRequest(request);
   const settings = await readJsonFile<Record<string, unknown>>(
     path.join(claudeHome, "settings.json")
   );
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const settingsPath = path.join(claudeHome, "settings.json");
   const { hooks, mtime } = await request.json();
 

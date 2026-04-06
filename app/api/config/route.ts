@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { getClaudeHome, detectClaudeInstallation } from "@/lib/claude-home";
+import { NextRequest, NextResponse } from "next/server";
+import { getClaudeHomeFromRequest, detectClaudeInstallation } from "@/lib/claude-home";
 import { readFullConfig } from "@/lib/config-reader";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const claudeHome = getClaudeHome();
+    const claudeHome = getClaudeHomeFromRequest(request);
     const installation = await detectClaudeInstallation(claudeHome);
 
     if (!installation.exists) {

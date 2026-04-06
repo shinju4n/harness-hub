@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClaudeHome } from "@/lib/claude-home";
+import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile, readMarkdownFile } from "@/lib/file-ops";
 import { writeFile } from "fs/promises";
 import path from "path";
 
-export async function GET() {
-  const claudeHome = getClaudeHome();
+export async function GET(request: NextRequest) {
+  const claudeHome = getClaudeHomeFromRequest(request);
   const [settings, claudeMd] = await Promise.all([
     readJsonFile(path.join(claudeHome, "settings.json")),
     readMarkdownFile(path.join(claudeHome, "CLAUDE.md")),
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const { type, content } = await request.json();
 
   if (type === "claude-md") {

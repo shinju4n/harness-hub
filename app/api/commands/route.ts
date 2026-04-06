@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClaudeHome } from "@/lib/claude-home";
+import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readMarkdownFile } from "@/lib/file-ops";
 import { readdir, writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 export async function GET(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
 
   if (name) {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
   const dir = path.join(claudeHome, "commands");
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
   const filePath = path.join(claudeHome, "commands", `${name}.md`);
@@ -59,7 +59,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const claudeHome = getClaudeHome();
+  const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
 
   if (!name || typeof content !== "string") {
