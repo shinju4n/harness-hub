@@ -1,7 +1,11 @@
 import { access } from "fs/promises";
 import path from "path";
 
-export function getClaudeHome(): string {
+export function getClaudeHome(override?: string | null): string {
+  if (override && override !== "auto") {
+    return override;
+  }
+
   if (process.env.CLAUDE_HOME) {
     return process.env.CLAUDE_HOME;
   }
@@ -11,6 +15,11 @@ export function getClaudeHome(): string {
     throw new Error("Cannot detect home directory");
   }
   return path.join(home, ".claude");
+}
+
+export function getClaudeHomeFromRequest(request: Request): string {
+  const override = request.headers.get("x-claude-home");
+  return getClaudeHome(override);
 }
 
 interface ClaudeInstallation {
