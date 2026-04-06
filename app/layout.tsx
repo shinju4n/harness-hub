@@ -14,17 +14,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="flex h-screen bg-gray-50 text-gray-900 antialiased">
+      <body className="flex h-screen bg-gray-50/80 text-gray-900 antialiased font-sans">
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
-            <h1 className="text-lg font-semibold">Harness Hub</h1>
-            <span className="text-sm text-gray-400 font-mono">~/.claude</span>
-          </header>
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
-          <footer className="border-t border-gray-200 bg-white px-6 py-2 text-xs text-gray-400" id="status-bar">
-            Detecting Claude Code...
-          </footer>
+        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+          <main className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+              {children}
+            </div>
+          </main>
         </div>
       </body>
     </html>

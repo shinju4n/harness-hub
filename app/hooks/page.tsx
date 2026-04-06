@@ -38,56 +38,57 @@ export default function HooksPage() {
     }
   };
 
-  if (events.length === 0) {
-    return (
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Hooks</h2>
-        <div className="text-gray-400">No hooks configured</div>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Hooks</h2>
-      <div className="space-y-4">
-        {events.map(([event, entries]) => (
-          <div key={event} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700">{event}</h3>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {entries.map((entry, i) => (
-                <div key={i} className="px-4 py-3 flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-400 font-mono">
-                        matcher: {entry.matcher ?? "*"}
-                      </span>
-                    </div>
-                    {entry.hooks.map((hook, j) => (
-                      <div key={j} className="mt-2 pl-4 text-sm">
-                        <span className="font-mono text-gray-600">{hook.command}</span>
-                        {hook.timeout && (
-                          <span className="ml-2 text-gray-400">
-                            timeout: {hook.timeout}ms
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => deleteHook(event, i)}
-                    className="text-red-400 hover:text-red-600 text-sm"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="mb-6 pl-10 lg:pl-0">
+        <h2 className="text-xl font-semibold text-gray-900">Hooks</h2>
+        <p className="mt-1 text-sm text-gray-500">{events.length} event types</p>
       </div>
+
+      {events.length === 0 ? (
+        <div className="text-gray-400 text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
+          No hooks configured
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {events.map(([event, entries]) => (
+            <div key={event} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+              <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-700">{event}</h3>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {entries.map((entry, i) => (
+                  <div key={i} className="px-4 py-3.5 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 font-mono text-gray-500">
+                          {entry.matcher ?? "*"}
+                        </span>
+                      </div>
+                      {entry.hooks.map((hook, j) => (
+                        <div key={j} className="mt-2 text-sm">
+                          <code className="font-mono text-gray-700 text-xs sm:text-sm break-all">{hook.command}</code>
+                          {hook.timeout && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              {hook.timeout >= 1000 ? `${hook.timeout / 1000}s` : `${hook.timeout}ms`}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => deleteHook(event, i)}
+                      className="shrink-0 text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

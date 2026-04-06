@@ -1,1 +1,72 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme inline {
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Markdown prose overrides */
+.prose {
+  --tw-prose-body: var(--color-gray-700);
+  --tw-prose-headings: var(--color-gray-900);
+  --tw-prose-links: var(--color-accent);
+  --tw-prose-code: var(--color-gray-800);
+  --tw-prose-pre-bg: var(--color-gray-50);
+  --tw-prose-pre-code: var(--color-gray-700);
+  --tw-prose-counters: var(--color-gray-500);
+  --tw-prose-bullets: var(--color-gray-400);
+  --tw-prose-hr: var(--color-gray-200);
+  --tw-prose-th-borders: var(--color-gray-200);
+  --tw-prose-td-borders: var(--color-gray-100);
+}
+
+.prose :where(code):not(:where(pre *)) {
+  background-color: var(--color-gray-100);
+  border-radius: 0.25rem;
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.prose :where(code):not(:where(pre *))::before,
+.prose :where(code):not(:where(pre *))::after {
+  content: "";
+}
+
+.prose :where(pre) {
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.prose :where(table) {
+  font-size: 0.875em;
+}
+
+.prose :where(th) {
+  font-weight: 600;
+  background-color: var(--color-gray-50);
+}
+
+.prose :where(blockquote) {
+  border-left-color: var(--color-accent);
+  background-color: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.prose :where(h1, h2, h3, h4) {
+  scroll-margin-top: 4rem;
+}
+
+.prose :where(a) {
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.prose :where(a):hover {
+  text-decoration: underline;
+}
