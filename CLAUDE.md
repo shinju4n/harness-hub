@@ -44,6 +44,28 @@ pnpm vitest run --config vitest.config.node.mts  # 테스트
 
 문서 없이 기능을 커밋하지 않는다.
 
+## 릴리즈 (HARD GATE)
+
+버전은 `package.json`의 `version` 필드가 **single source of truth**. 다른 곳에 버전을 하드코딩하지 않는다.
+
+- `app/api/update-check/route.ts` → `import packageJson from "@/package.json"` 으로 읽음
+- `app/app-settings/page.tsx` → 동일하게 `packageJson.version` 사용
+- electron-builder는 `package.json` version을 자동으로 사용
+
+릴리즈 명령어:
+```bash
+pnpm release <version>    # 예: pnpm release 0.4.0
+```
+
+이 스크립트가 자동으로:
+1. `package.json` version 업데이트
+2. `git commit -m "release: v<version>"`
+3. `git tag v<version>`
+4. `git push` + `git push origin v<version>`
+5. GitHub Actions가 macOS + Windows 빌드 → Release 생성
+
+**버전을 수동으로 여러 파일에 수정하지 않는다.**
+
 ## 코딩 컨벤션
 
 - 서버 컴포넌트 기본, 필요 시에만 `"use client"`
