@@ -59,7 +59,7 @@ export default function SkillsPage() {
               onClick={() => viewSkill(s)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
                 selected?.name === s.name
-                  ? "bg-indigo-50 text-indigo-700 font-medium"
+                  ? "bg-amber-50 text-amber-800 font-medium"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -77,7 +77,7 @@ export default function SkillsPage() {
               onClick={() => viewSkill(s)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
                 selected?.name === s.name
-                  ? "bg-indigo-50 text-indigo-700 font-medium"
+                  ? "bg-amber-50 text-amber-800 font-medium"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >

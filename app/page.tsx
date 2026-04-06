@@ -14,7 +14,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-gray-400 pt-12 justify-center">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-500" />
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-amber-500" />
         Loading...
       </div>
     );

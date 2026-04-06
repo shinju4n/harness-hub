@@ -39,7 +39,7 @@ export default function CommandsPage() {
           onClick={() => viewCommand(cmd.name)}
           className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] font-mono transition-all ${
             selected?.name === cmd.name
-              ? "bg-indigo-50 text-indigo-700 font-medium"
+              ? "bg-amber-50 text-amber-800 font-medium"
               : "text-gray-600 hover:bg-gray-50"
           }`}
         >

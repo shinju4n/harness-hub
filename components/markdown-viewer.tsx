@@ -56,7 +56,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-3 py-1 text-xs text-white bg-indigo-500 rounded-md hover:bg-indigo-600 transition-colors font-medium disabled:opacity-50"
+                className="px-3 py-1 text-xs text-white bg-amber-600 rounded-md hover:bg-amber-700 transition-colors font-medium disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}
               </button>
@@ -107,14 +107,14 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
           <textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="w-full min-h-[400px] sm:min-h-[500px] p-4 font-mono text-sm text-gray-700 leading-relaxed resize-y rounded-lg border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
+            className="w-full min-h-[400px] sm:min-h-[500px] p-4 font-mono text-sm text-gray-700 leading-relaxed resize-y rounded-lg border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
             spellCheck={false}
           />
         </div>
       ) : (
         <div className="p-5 sm:p-6 lg:p-8 overflow-x-auto">
           {mode === "preview" ? (
-            <article className="prose prose-gray max-w-none break-words prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-3 prose-h1:mb-4 prose-h2:text-xl prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-2 prose-h2:mt-8 prose-h3:text-lg prose-h3:mt-6 prose-p:text-[15px] prose-p:leading-7 prose-li:text-[15px] prose-li:leading-7 prose-pre:text-[13px] prose-pre:leading-6 prose-code:text-[13px] prose-img:rounded-lg prose-table:text-sm prose-td:py-2 prose-th:py-2 prose-strong:text-gray-900 prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline">
+            <article className="prose prose-gray max-w-none break-words prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-3 prose-h1:mb-4 prose-h2:text-xl prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-2 prose-h2:mt-8 prose-h3:text-lg prose-h3:mt-6 prose-p:text-[15px] prose-p:leading-7 prose-li:text-[15px] prose-li:leading-7 prose-pre:text-[13px] prose-pre:leading-6 prose-code:text-[13px] prose-img:rounded-lg prose-table:text-sm prose-td:py-2 prose-th:py-2 prose-strong:text-gray-900 prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -161,7 +161,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
                     </td>
                   ),
                   blockquote: ({ children, ...props }) => (
-                    <blockquote className="not-prose my-4 border-l-4 border-indigo-400 bg-indigo-50/50 rounded-r-lg px-4 py-3 text-[15px] text-gray-700 leading-7 [&>p]:m-0" {...props}>
+                    <blockquote className="not-prose my-4 border-l-4 border-amber-400 bg-amber-50/50 rounded-r-lg px-4 py-3 text-[15px] text-gray-700 leading-7 [&>p]:m-0" {...props}>
                       {children}
                     </blockquote>
                   ),
@@ -194,7 +194,7 @@ export function MarkdownViewer({ content, fileName, onSave }: MarkdownViewerProp
                     </h3>
                   ),
                   a: ({ children, href, ...props }) => (
-                    <a href={href} className="text-indigo-600 font-medium hover:underline underline-offset-2" {...props}>
+                    <a href={href} className="text-amber-700 font-medium hover:underline underline-offset-2" {...props}>
                       {children}
                     </a>
                   ),

@@ -70,11 +70,11 @@ export function Sidebar() {
                 onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-all ${
                   active
-                    ? "bg-indigo-50 text-indigo-700 font-medium"
+                    ? "bg-amber-50 text-amber-800 font-medium"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                <span className={active ? "text-indigo-500" : "text-gray-400"}>{icons[item.icon]}</span>
+                <span className={active ? "text-amber-600" : "text-gray-400"}>{icons[item.icon]}</span>
                 {item.label}
               </Link>
             );

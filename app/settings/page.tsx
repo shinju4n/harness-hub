@@ -65,7 +65,7 @@ export default function SettingsPage() {
               });
             }}
           />
-          <div className="mt-4 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 text-sm text-indigo-600">
+          <div className="mt-4 p-3 rounded-lg bg-amber-50/50 border border-amber-200 text-sm text-amber-700">
             Hooks are managed on the <a href="/hooks" className="font-medium underline underline-offset-2">Hooks page</a>.
           </div>
         </div>

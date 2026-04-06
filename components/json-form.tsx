@@ -41,7 +41,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                 value={String(value)}
                 onChange={(e) => updateField(key, e.target.value)}
                 disabled={isReadOnly}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
               />
             )}
           </div>
@@ -49,7 +49,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
       })}
       <button
         onClick={() => onSave(formData)}
-        className="px-4 py-2 bg-indigo-500 text-white text-sm rounded-lg hover:bg-indigo-600 transition-colors font-medium"
+        className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors font-medium"
       >
         Save
       </button>
