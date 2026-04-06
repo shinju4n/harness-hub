@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 interface PluginData {
   enabledPlugins: Record<string, boolean>;
@@ -18,7 +20,7 @@ export default function PluginsPage() {
     else setError("Failed to load plugins");
   };
 
-  useEffect(() => { fetchPlugins(); }, []);
+  const { refresh } = usePolling(fetchPlugins);
 
   const togglePlugin = async (key: string, enabled: boolean) => {
     if (!data) return;
@@ -41,9 +43,12 @@ export default function PluginsPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Plugins</h2>
-        <p className="mt-1 text-sm text-gray-500">{plugins.length} installed</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Plugins</h2>
+          <p className="mt-1 text-sm text-gray-500">{plugins.length} installed</p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
 
       {plugins.length === 0 ? (

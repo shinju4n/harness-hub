@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 interface HookEntry {
   matcher?: string;
@@ -33,7 +35,7 @@ export default function HooksPage() {
     });
   };
 
-  useEffect(() => { fetchHooks(); }, []);
+  const { refresh } = usePolling(fetchHooks);
 
   const events = Object.entries(hooks);
 
@@ -87,14 +89,17 @@ export default function HooksPage() {
           <h2 className="text-xl font-semibold text-gray-900">Hooks</h2>
           <p className="mt-1 text-sm text-gray-500">{events.length} event types</p>
         </div>
-        {!creating && (
-          <button
-            onClick={() => setCreating(true)}
-            className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
-          >
-            + New Hook
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <RefreshButton onRefresh={refresh} />
+          {!creating && (
+            <button
+              onClick={() => setCreating(true)}
+              className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              + New Hook
+            </button>
+          )}
+        </div>
       </div>
 
       {creating && (

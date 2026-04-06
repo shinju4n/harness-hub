@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 type Tab = "definitions" | "teams";
 
@@ -56,8 +58,9 @@ export default function AgentsPage() {
     fetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
   };
 
+  const { refresh } = usePolling(fetchAgents);
+
   useEffect(() => {
-    fetchAgents();
     fetch("/api/agents?tab=teams").then((r) => r.json()).then((d) => setTeams(d.teams));
   }, []);
 
@@ -101,11 +104,14 @@ export default function AgentsPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Agents</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          {agents.length} definitions, {teams.length} team inboxes
-        </p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Agents</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {agents.length} definitions, {teams.length} team inboxes
+          </p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
 
       <div className="flex gap-1 rounded-lg bg-gray-100 p-1 w-fit mb-6">

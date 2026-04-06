@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 interface CommandItem { name: string; fileName: string; }
 
@@ -16,7 +18,7 @@ export default function CommandsPage() {
     fetch("/api/commands").then((r) => r.json()).then((d) => setCommands(d.items));
   };
 
-  useEffect(() => { fetchCommands(); }, []);
+  const { refresh } = usePolling(fetchCommands);
 
   const viewCommand = async (name: string) => {
     const res = await fetch(`/api/commands?name=${name}`);
@@ -127,9 +129,12 @@ export default function CommandsPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Commands</h2>
-        <p className="mt-1 text-sm text-gray-500">{commands.length} commands</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Commands</h2>
+          <p className="mt-1 text-sm text-gray-500">{commands.length} commands</p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
 
       {commands.length === 0 && !creating ? (

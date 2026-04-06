@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 interface SkillItem {
   name: string;
@@ -20,7 +22,7 @@ export default function SkillsPage() {
     fetch("/api/skills").then((r) => r.json()).then(setSkills);
   };
 
-  useEffect(() => { fetchSkills(); }, []);
+  const { refresh } = usePolling(fetchSkills);
 
   const viewSkill = async (skill: SkillItem) => {
     const params = new URLSearchParams({ name: skill.name, source: skill.source });
@@ -166,9 +168,12 @@ export default function SkillsPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Skills</h2>
-        <p className="mt-1 text-sm text-gray-500">{skills.items.length} total</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Skills</h2>
+          <p className="mt-1 text-sm text-gray-500">{skills.items.length} total</p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
 
       {/* Mobile: stacked layout */}

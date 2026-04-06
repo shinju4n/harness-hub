@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { JsonForm } from "@/components/json-form";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 type Tab = "settings" | "claude-md";
 
@@ -10,12 +12,15 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("settings");
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [claudeMd, setClaudeMd] = useState<string>("");
-  useEffect(() => {
+
+  const fetchSettings = () => {
     fetch("/api/settings").then((r) => r.json()).then((d) => {
       setSettings(d.settings);
       setClaudeMd(d.claudeMd);
     });
-  }, []);
+  };
+
+  const { refresh } = usePolling(fetchSettings);
 
   const saveClaudeMd = async (content: string) => {
     await fetch("/api/settings", {
@@ -28,9 +33,12 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <div className="mb-6 pl-10 lg:pl-0">
-        <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
-        <p className="mt-1 text-sm text-gray-500">Global Claude Code configuration</p>
+      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
+          <p className="mt-1 text-sm text-gray-500">Global Claude Code configuration</p>
+        </div>
+        <RefreshButton onRefresh={refresh} />
       </div>
 
       <div className="flex gap-1 rounded-lg bg-gray-100 p-1 w-fit mb-6">

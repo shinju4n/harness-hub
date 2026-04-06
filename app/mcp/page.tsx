@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { RefreshButton } from "@/components/refresh-button";
+import { usePolling } from "@/lib/use-polling";
 
 interface McpServer { command: string; args?: string[]; }
 
@@ -20,7 +22,7 @@ export default function McpPage() {
     });
   };
 
-  useEffect(() => { fetchServers(); }, []);
+  const { refresh } = usePolling(fetchServers);
 
   const saveServers = async (updated: Record<string, McpServer>) => {
     const res = await fetch("/api/mcp", {
@@ -133,14 +135,17 @@ export default function McpPage() {
           <h2 className="text-xl font-semibold text-gray-900">MCP Servers</h2>
           <p className="mt-1 text-sm text-gray-500">{entries.length} configured</p>
         </div>
-        {!creating && !editingName && (
-          <button
-            onClick={startCreate}
-            className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
-          >
-            + Add Server
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <RefreshButton onRefresh={refresh} />
+          {!creating && !editingName && (
+            <button
+              onClick={startCreate}
+              className="text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              + Add Server
+            </button>
+          )}
+        </div>
       </div>
 
       {(creating || editingName) && <div className="mb-6">{serverForm}</div>}
