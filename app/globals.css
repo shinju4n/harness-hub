@@ -10,32 +10,41 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
-/* Scrollbar styling for code blocks */
-pre::-webkit-scrollbar {
+/* Global scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
   height: 6px;
 }
 
-pre::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
-pre::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: var(--color-gray-300);
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 
-/* Table scrollbar */
-.overflow-x-auto::-webkit-scrollbar {
-  height: 4px;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-400);
 }
 
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: transparent;
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-gray-600);
 }
 
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: var(--color-gray-200);
-  border-radius: 2px;
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+.dark * {
+  scrollbar-color: var(--color-gray-600) transparent;
 }
 
 /* Word breaking for long inline code */
