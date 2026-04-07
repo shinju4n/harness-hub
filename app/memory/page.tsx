@@ -220,7 +220,7 @@ export default function MemoryPage() {
       {/* Desktop layout */}
       <div className="hidden lg:flex gap-6">
         {/* Project list */}
-        <div className="w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+        <div className="w-80 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
           <ProjectList
             projects={projects}
             selectedId={selectedProject?.id ?? null}
