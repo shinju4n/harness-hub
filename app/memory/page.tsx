@@ -226,9 +226,9 @@ export default function MemoryPage() {
 
       {/* Desktop layout — resizable panels */}
       <div className="hidden lg:block h-[calc(100vh-10rem)] px-2">
-        <Group id="memory-panels" orientation="horizontal">
+        <Group id="memory-panels" orientation="horizontal" defaultLayout={{ projects: 25, memories: 20, editor: 55 }}>
           {/* Project list panel */}
-          <Panel defaultSize={25} minSize={15} maxSize={40}>
+          <Panel id="projects" minSize="15%" maxSize="40%">
             <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
               <ProjectList
                 projects={projects}
@@ -241,7 +241,7 @@ export default function MemoryPage() {
           <ResizeHandle />
 
           {/* Memory list panel */}
-          <Panel defaultSize={20} minSize={12} maxSize={35}>
+          <Panel id="memories" minSize="12%" maxSize="35%">
             <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
               {selectedProject ? (
                 <>
@@ -266,7 +266,7 @@ export default function MemoryPage() {
           <ResizeHandle />
 
           {/* Editor panel */}
-          <Panel defaultSize={55} minSize={30}>
+          <Panel id="editor" minSize="30%">
             <div className="h-full overflow-y-auto">
               {selectedMemory ? (
                 <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
