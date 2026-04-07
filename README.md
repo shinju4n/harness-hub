@@ -28,6 +28,7 @@
 | **MCP Servers** | View connected MCP server configurations | [docs](docs/features/mcp.md) |
 | **Agents** | View/edit agent definitions, browse team inbox messages | [docs](docs/features/agents.md) |
 | **Rules** | View/edit conditional rules for path-scoped instructions | [docs](docs/features/rules.md) |
+| **Memory** | Browse/edit/create/delete auto memory across all projects | [docs](docs/features/memory.md) |
 | **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
 | **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
 
