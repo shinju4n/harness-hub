@@ -29,6 +29,9 @@
 | **Agents** | View/edit agent definitions, browse team inbox messages | [docs](docs/features/agents.md) |
 | **Rules** | View/edit conditional rules for path-scoped instructions | [docs](docs/features/rules.md) |
 | **Memory** | Browse/edit/create/delete auto memory across all projects | [docs](docs/features/memory.md) |
+| **Sessions** | View current and recent Claude Code sessions with pid/cwd/startedAt | [docs](docs/features/sessions.md) |
+| **Plans** | Browse plan mode documents from `~/.claude/plans/` with markdown preview | [docs](docs/features/plans.md) |
+| **History** | Paginated view of `history.jsonl` with project/date filters | [docs](docs/features/history.md) |
 | **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
 | **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
 

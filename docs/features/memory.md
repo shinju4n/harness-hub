@@ -18,6 +18,7 @@ Claude Code의 auto memory 파일을 프로젝트별로 조회, 편집, 생성, 
 - 메모리 생성 (자동 파일명 생성, MEMORY.md 자동 업데이트)
 - 메모리 삭제 (MEMORY.md 자동 정리)
 - MEMORY.md 200줄 초과 경고
+- **로딩 방식 시각화**: MEMORY.md는 `auto-loaded` 섹션에 라인/바이트 사용량 프로그레스 바와 함께 표시, 토픽 파일은 `on-demand` 뱃지로 구분 (200줄 / 25KB 상한 기준)
 
 ## API
 
@@ -34,4 +35,5 @@ Claude Code의 auto memory 파일을 프로젝트별로 조회, 편집, 생성, 
 - `app/memory/_components/` — ProjectList, MemoryList, MemoryEditor, CreateMemoryModal
 - `app/api/memory/route.ts` — API 라우트
 - `lib/memory-ops.ts` — 핵심 파일 연산
-- `lib/__tests__/memory-ops.test.ts` — 테스트
+- `lib/memory-index-stats.ts` — MEMORY.md 라인/바이트 사용량 계산 (200줄 / 25KB 상한)
+- `lib/__tests__/memory-ops.test.ts`, `lib/__tests__/memory-index-stats.test.ts` — 테스트

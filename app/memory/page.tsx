@@ -23,6 +23,7 @@ export default function MemoryPage() {
   const [projects, setProjects] = useState<MemoryProject[]>([]);
   const [selectedProject, setSelectedProject] = useState<MemoryProject | null>(null);
   const [memories, setMemories] = useState<MemoryFile[]>([]);
+  const [memoryIndex, setMemoryIndex] = useState<string | null>(null);
   const [selectedMemory, setSelectedMemory] = useState<MemoryFile | null>(null);
   const [creating, setCreating] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export default function MemoryPage() {
       const res = await apiFetch(`/api/memory?project=${encodeURIComponent(projectId)}`);
       const data = await res.json();
       setMemories(data.memories ?? []);
+      setMemoryIndex(data.memoryIndex ?? null);
       if (data.warning) setWarning(data.warning);
     },
     []
@@ -51,6 +53,7 @@ export default function MemoryPage() {
       setSelectedMemory(null);
       setCreating(false);
       setWarning(null);
+      setMemoryIndex(null);
       await fetchMemories(project.id);
     },
     [fetchMemories]
@@ -201,7 +204,7 @@ export default function MemoryPage() {
               Back to projects
             </button>
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
-              <MemoryList memories={memories} selectedFile={null} onSelect={handleSelectMemory} />
+              <MemoryList memories={memories} selectedFile={null} onSelect={handleSelectMemory} memoryIndex={memoryIndex} />
               {newMemoryButton}
               {creating && (
                 <CreateMemoryModal onSubmit={handleCreate} onClose={() => setCreating(false)} />
@@ -219,7 +222,7 @@ export default function MemoryPage() {
               {backArrow}
               Back to memories
             </button>
-            <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
+            <MemoryEditor key={selectedMemory.fileName} memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
           </div>
         )}
       </div>
@@ -249,6 +252,7 @@ export default function MemoryPage() {
                     memories={memories}
                     selectedFile={selectedMemory?.fileName ?? null}
                     onSelect={handleSelectMemory}
+                    memoryIndex={memoryIndex}
                   />
                   {newMemoryButton}
                   {creating && (
@@ -269,7 +273,7 @@ export default function MemoryPage() {
           <Panel id="editor" minSize="30%">
             <div className="h-full overflow-y-auto">
               {selectedMemory ? (
-                <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
+                <MemoryEditor key={selectedMemory.fileName} memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-400 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                   {selectedProject ? "Select a memory to view" : "Select a project to begin"}

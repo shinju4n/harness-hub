@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { MEMORY_TYPES, buildMemoryFileContent } from "@/lib/memory-types";
 import type { MemoryFile } from "@/lib/memory-types";
@@ -12,16 +12,12 @@ interface MemoryEditorProps {
 }
 
 export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
+  // State is initialized from props; the parent passes key={memory.fileName}
+  // so the component remounts when a different memory is selected.
   const [name, setName] = useState(memory.name ?? "");
   const [description, setDescription] = useState(memory.description ?? "");
   const [type, setType] = useState(memory.type);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setName(memory.name ?? "");
-    setDescription(memory.description ?? "");
-    setType(memory.type);
-  }, [memory.fileName, memory.name, memory.description, memory.type]);
 
   const handleSaveMetadata = async () => {
     setSaving(true);

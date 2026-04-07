@@ -1,6 +1,8 @@
 import path from "path";
 import { readdir } from "fs/promises";
 import { readJsonFile, readMarkdownFile } from "./file-ops";
+import { readSessions } from "./sessions-ops";
+import { readPlans } from "./plans-ops";
 
 interface PluginInfo {
   name: string;
@@ -44,11 +46,13 @@ interface ConfigSummary {
   agents: { total: number };
   rules: { total: number };
   memory: { total: number };
+  sessions: { total: number };
+  plans: { total: number };
   claudeMd: { exists: boolean };
 }
 
 export async function readFullConfig(claudeHome: string): Promise<ConfigSummary> {
-  const [plugins, skills, commands, hooks, mcpServers, agents, rules, memory, claudeMd] = await Promise.all([
+  const [plugins, skills, commands, hooks, mcpServers, agents, rules, memory, sessions, plans, claudeMd] = await Promise.all([
     readPlugins(claudeHome),
     readSkills(claudeHome),
     readCommands(claudeHome),
@@ -57,9 +61,21 @@ export async function readFullConfig(claudeHome: string): Promise<ConfigSummary>
     readAgentCount(claudeHome),
     readRuleCount(claudeHome),
     readMemoryCount(claudeHome),
+    readSessionCount(claudeHome),
+    readPlanCount(claudeHome),
     readClaudeMdExists(claudeHome),
   ]);
-  return { plugins, skills, commands, hooks, mcpServers, agents, rules, memory, claudeMd };
+  return { plugins, skills, commands, hooks, mcpServers, agents, rules, memory, sessions, plans, claudeMd };
+}
+
+async function readSessionCount(claudeHome: string) {
+  const sessions = await readSessions(claudeHome);
+  return { total: sessions.length };
+}
+
+async function readPlanCount(claudeHome: string) {
+  const plans = await readPlans(claudeHome);
+  return { total: plans.length };
 }
 
 async function readPlugins(claudeHome: string) {
