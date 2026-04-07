@@ -87,10 +87,10 @@ export default function MemoryPage() {
         }),
       });
       if (res.ok) {
-        await fetchMemories(selectedProject.id);
-        const refreshRes = await apiFetch(
-          `/api/memory?project=${encodeURIComponent(selectedProject.id)}&file=${encodeURIComponent(selectedMemory.fileName)}`
-        );
+        const [, refreshRes] = await Promise.all([
+          fetchMemories(selectedProject.id),
+          apiFetch(`/api/memory?project=${encodeURIComponent(selectedProject.id)}&file=${encodeURIComponent(selectedMemory.fileName)}`),
+        ]);
         if (refreshRes.ok) setSelectedMemory(await refreshRes.json());
       } else {
         const err = await res.json();

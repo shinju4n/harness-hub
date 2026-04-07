@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
+import { MEMORY_TYPES, buildMemoryFileContent } from "@/lib/memory-ops";
 import type { MemoryFile } from "@/lib/memory-ops";
 
 interface MemoryEditorProps {
@@ -9,8 +10,6 @@ interface MemoryEditorProps {
   onSave: (data: { name: string; description: string; type: string; body: string; mtime: string }) => Promise<void>;
   onDelete: (fileName: string) => void;
 }
-
-const TYPES = ["user", "feedback", "project", "reference"] as const;
 
 export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
   const [name, setName] = useState(memory.name ?? "");
@@ -31,15 +30,12 @@ export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
   };
 
   const handleSaveBody = async (rawContent: string) => {
-    // rawContent is full file content (frontmatter + body) from MarkdownViewer edit mode
-    // Strip frontmatter to get body only
     const fmMatch = rawContent.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
     const body = fmMatch ? fmMatch[1].trim() : rawContent.trim();
     await onSave({ name, description, type, body, mtime: memory.mtime });
   };
 
-  // Build raw content with frontmatter for MarkdownViewer
-  const rawContent = `---\nname: ${memory.name ?? ""}\ndescription: ${memory.description ?? ""}\ntype: ${memory.type}\n---\n\n${memory.body}\n`;
+  const rawContent = buildMemoryFileContent({ name: memory.name ?? "", description: memory.description ?? "", type: memory.type, body: memory.body });
 
   return (
     <div className="space-y-4">
@@ -75,7 +71,7 @@ export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
               onChange={(e) => setType(e.target.value as MemoryFile["type"])}
               className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
             >
-              {TYPES.map((t) => (
+              {MEMORY_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
               {memory.type === "unknown" && <option value="unknown">unknown</option>}

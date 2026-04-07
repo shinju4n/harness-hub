@@ -46,7 +46,9 @@ export interface UpdateMemoryInput extends CreateMemoryInput {
 
 // ─── Helpers ───
 
-const VALID_TYPES = new Set(["user", "feedback", "project", "reference"]);
+export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
+
+const VALID_TYPES = new Set<string>(MEMORY_TYPES);
 
 function parseType(raw: unknown): MemoryFile["type"] {
   if (typeof raw === "string" && VALID_TYPES.has(raw)) {
@@ -85,29 +87,13 @@ function buildMemoryIndexLine(input: { name: string; fileName: string; descripti
   return `- [${input.name}](${input.fileName}) — ${input.description}`;
 }
 
-async function dirExists(dirPath: string): Promise<boolean> {
-  try {
-    const s = await stat(dirPath);
-    return s.isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function ensureMemoryDir(memDir: string): Promise<void> {
   await mkdir(memDir, { recursive: true });
   const indexPath = path.join(memDir, "MEMORY.md");
-  if (!(await fileExists(indexPath))) {
-    await writeFile(indexPath, "# Memory Index\n", "utf-8");
+  try {
+    await writeFile(indexPath, "# Memory Index\n", { encoding: "utf-8", flag: "wx" });
+  } catch {
+    // Already exists — fine
   }
 }
 
@@ -171,32 +157,34 @@ async function removeFromMemoryIndex(memDir: string, fileName: string): Promise<
 
 export async function listMemoryProjects(claudeHome: string): Promise<MemoryProject[]> {
   const projectsDir = path.join(claudeHome, "projects");
-  if (!(await dirExists(projectsDir))) return [];
 
-  const entries = await readdir(projectsDir, { withFileTypes: true });
-  const results: MemoryProject[] = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const projPath = path.join(projectsDir, entry.name);
-    const memDir = path.join(projPath, "memory");
-    const hasMem = await dirExists(memDir);
-    let memoryCount = 0;
-
-    if (hasMem) {
-      const files = await readdir(memDir);
-      memoryCount = files.filter(
-        (f) => f.endsWith(".md") && f !== "MEMORY.md"
-      ).length;
-    }
-
-    results.push({
-      id: entry.name,
-      path: projPath,
-      memoryCount,
-      hasMemoryDir: hasMem,
-    });
+  let entries;
+  try {
+    entries = await readdir(projectsDir, { withFileTypes: true });
+  } catch {
+    return [];
   }
+
+  const results = await Promise.all(
+    entries
+      .filter((e) => e.isDirectory())
+      .map(async (entry) => {
+        const projPath = path.join(projectsDir, entry.name);
+        const memDir = path.join(projPath, "memory");
+        let memoryCount = 0;
+        let hasMemoryDir = false;
+
+        try {
+          const files = await readdir(memDir);
+          hasMemoryDir = true;
+          memoryCount = files.filter((f) => f.endsWith(".md") && f !== "MEMORY.md").length;
+        } catch {
+          // No memory directory
+        }
+
+        return { id: entry.name, path: projPath, memoryCount, hasMemoryDir };
+      })
+  );
 
   return results;
 }
@@ -206,30 +194,39 @@ export async function listMemoryFiles(
   projectId: string
 ): Promise<MemoryListResult> {
   const memDir = path.join(claudeHome, "projects", projectId, "memory");
-  if (!(await dirExists(memDir))) {
+
+  let files;
+  try {
+    files = await readdir(memDir);
+  } catch {
     return { memories: [], memoryIndex: null };
   }
 
-  const files = await readdir(memDir);
   const mdFiles = files.filter((f) => f.endsWith(".md"));
 
   let memoryIndex: string | null = null;
-  const memories: MemoryFile[] = [];
+  const memoryPromises: Promise<MemoryFile | null>[] = [];
 
   for (const fileName of mdFiles) {
+    if (fileName === "MEMORY.md") continue;
     const filePath = path.join(memDir, fileName);
-    const raw = await readFile(filePath, "utf-8");
-
-    if (fileName === "MEMORY.md") {
-      memoryIndex = raw;
-      continue;
-    }
-
-    const fileStat = await stat(filePath);
-    memories.push(parseMemoryFile(fileName, raw, fileStat.mtime.toISOString()));
+    memoryPromises.push(
+      Promise.all([readFile(filePath, "utf-8"), stat(filePath)]).then(
+        ([raw, fileStat]) => parseMemoryFile(fileName, raw, fileStat.mtime.toISOString()),
+        () => null
+      )
+    );
   }
 
-  return { memories, memoryIndex };
+  // Read MEMORY.md in parallel with memory files
+  const indexPath = path.join(memDir, "MEMORY.md");
+  const [memories, indexContent] = await Promise.all([
+    Promise.all(memoryPromises),
+    readFile(indexPath, "utf-8").catch(() => null),
+  ]);
+
+  memoryIndex = indexContent;
+  return { memories: memories.filter((m): m is MemoryFile => m !== null), memoryIndex };
 }
 
 export async function readMemoryFile(
@@ -239,8 +236,7 @@ export async function readMemoryFile(
 ): Promise<MemoryFile | null> {
   const filePath = path.join(claudeHome, "projects", projectId, "memory", fileName);
   try {
-    const raw = await readFile(filePath, "utf-8");
-    const fileStat = await stat(filePath);
+    const [raw, fileStat] = await Promise.all([readFile(filePath, "utf-8"), stat(filePath)]);
     return parseMemoryFile(fileName, raw, fileStat.mtime.toISOString());
   } catch {
     return null;
@@ -259,12 +255,15 @@ export async function createMemoryFile(
     await ensureMemoryDir(memDir);
 
     const filePath = path.join(memDir, input.fileName);
-    if (await fileExists(filePath)) {
-      return { success: false, error: `File already exists: ${input.fileName}` };
-    }
-
     const content = buildMemoryFileContent(input);
-    await writeFile(filePath, content, "utf-8");
+    try {
+      await writeFile(filePath, content, { encoding: "utf-8", flag: "wx" });
+    } catch (e: unknown) {
+      if ((e as NodeJS.ErrnoException).code === "EEXIST") {
+        return { success: false, error: `File already exists: ${input.fileName}` };
+      }
+      throw e;
+    }
 
     const warning = await addToMemoryIndex(memDir, input);
     return { success: true, warning };
@@ -306,11 +305,14 @@ export async function deleteMemoryFile(
     const memDir = path.join(claudeHome, "projects", projectId, "memory");
     const filePath = path.join(memDir, fileName);
 
-    if (!(await fileExists(filePath))) {
-      return { success: false, error: `File not found: ${fileName}` };
+    try {
+      await unlink(filePath);
+    } catch (e: unknown) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") {
+        return { success: false, error: `File not found: ${fileName}` };
+      }
+      throw e;
     }
-
-    await unlink(filePath);
     await removeFromMemoryIndex(memDir, fileName);
     return { success: true };
   } catch (err) {

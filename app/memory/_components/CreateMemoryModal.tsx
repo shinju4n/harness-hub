@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { MEMORY_TYPES } from "@/lib/memory-ops";
 
 interface CreateMemoryModalProps {
   onSubmit: (data: { fileName: string; name: string; description: string; type: string; body: string }) => Promise<boolean>;
   onClose: () => void;
 }
-
-const TYPES = ["user", "feedback", "project", "reference"] as const;
 
 function toFileName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") + ".md";
@@ -62,7 +61,7 @@ export function CreateMemoryModal({ onSubmit, onClose }: CreateMemoryModalProps)
         onChange={(e) => setType(e.target.value)}
         className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
       >
-        {TYPES.map((t) => (
+        {MEMORY_TYPES.map((t) => (
           <option key={t} value={t}>{t}</option>
         ))}
       </select>
