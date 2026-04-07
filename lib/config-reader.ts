@@ -43,11 +43,12 @@ interface ConfigSummary {
   mcpServers: { items: McpServerInfo[]; total: number };
   agents: { total: number };
   rules: { total: number };
+  memory: { total: number };
   claudeMd: { exists: boolean };
 }
 
 export async function readFullConfig(claudeHome: string): Promise<ConfigSummary> {
-  const [plugins, skills, commands, hooks, mcpServers, agents, rules, claudeMd] = await Promise.all([
+  const [plugins, skills, commands, hooks, mcpServers, agents, rules, memory, claudeMd] = await Promise.all([
     readPlugins(claudeHome),
     readSkills(claudeHome),
     readCommands(claudeHome),
@@ -55,9 +56,10 @@ export async function readFullConfig(claudeHome: string): Promise<ConfigSummary>
     readMcpServers(claudeHome),
     readAgentCount(claudeHome),
     readRuleCount(claudeHome),
+    readMemoryCount(claudeHome),
     readClaudeMdExists(claudeHome),
   ]);
-  return { plugins, skills, commands, hooks, mcpServers, agents, rules, claudeMd };
+  return { plugins, skills, commands, hooks, mcpServers, agents, rules, memory, claudeMd };
 }
 
 async function readPlugins(claudeHome: string) {
@@ -203,6 +205,22 @@ async function readRuleCount(claudeHome: string) {
   } catch {
     return { total: 0 };
   }
+}
+
+async function readMemoryCount(claudeHome: string) {
+  let total = 0;
+  try {
+    const projectsDir = path.join(claudeHome, "projects");
+    const entries = await readdir(projectsDir);
+    for (const entry of entries) {
+      try {
+        const memDir = path.join(projectsDir, entry, "memory");
+        const files = await readdir(memDir);
+        total += files.filter((f: string) => f.endsWith(".md") && f !== "MEMORY.md").length;
+      } catch {}
+    }
+  } catch {}
+  return { total };
 }
 
 async function readClaudeMdExists(claudeHome: string) {
