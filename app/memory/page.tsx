@@ -5,7 +5,7 @@ import { Panel, Group, Separator } from "react-resizable-panels";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
-import type { MemoryProject, MemoryFile } from "@/lib/memory-ops";
+import type { MemoryProject, MemoryFile } from "@/lib/memory-types";
 import { ProjectList } from "./_components/ProjectList";
 import { MemoryList } from "./_components/MemoryList";
 import { MemoryEditor } from "./_components/MemoryEditor";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MEMORY_TYPES } from "@/lib/memory-ops";
+import { MEMORY_TYPES } from "@/lib/memory-types";
 
 interface CreateMemoryModalProps {
   onSubmit: (data: { fileName: string; name: string; description: string; type: string; body: string }) => Promise<boolean>;

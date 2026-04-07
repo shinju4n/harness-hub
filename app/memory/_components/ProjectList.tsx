@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { MemoryProject } from "@/lib/memory-ops";
+import type { MemoryProject } from "@/lib/memory-types";
 
 interface ProjectListProps {
   projects: MemoryProject[];

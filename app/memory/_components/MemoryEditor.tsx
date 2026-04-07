@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
-import { MEMORY_TYPES, buildMemoryFileContent } from "@/lib/memory-ops";
-import type { MemoryFile } from "@/lib/memory-ops";
+import { MEMORY_TYPES, buildMemoryFileContent } from "@/lib/memory-types";
+import type { MemoryFile } from "@/lib/memory-types";
 
 interface MemoryEditorProps {
   memory: MemoryFile;

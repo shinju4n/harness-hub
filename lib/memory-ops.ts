@@ -1,52 +1,13 @@
 import { readFile, writeFile, readdir, stat, mkdir, unlink } from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
+import { buildMemoryFileContent, MEMORY_TYPES } from "./memory-types";
+import type { MemoryProject, MemoryFile, MemoryListResult, MutationResult, CreateMemoryInput, UpdateMemoryInput } from "./memory-types";
 
-// ─── Types ───
-
-export interface MemoryProject {
-  id: string;
-  path: string;
-  memoryCount: number;
-  hasMemoryDir: boolean;
-}
-
-export interface MemoryFile {
-  fileName: string;
-  name: string | null;
-  description: string | null;
-  type: "user" | "feedback" | "project" | "reference" | "unknown";
-  body: string;
-  mtime: string;
-}
-
-export interface MemoryListResult {
-  memories: MemoryFile[];
-  memoryIndex: string | null;
-  warning?: string;
-}
-
-export interface MutationResult {
-  success: boolean;
-  error?: string;
-  warning?: string;
-}
-
-export interface CreateMemoryInput {
-  fileName: string;
-  name: string;
-  description: string;
-  type: "user" | "feedback" | "project" | "reference" | "unknown";
-  body: string;
-}
-
-export interface UpdateMemoryInput extends CreateMemoryInput {
-  expectedMtime: number;
-}
+export type { MemoryProject, MemoryFile, MemoryListResult, MutationResult, CreateMemoryInput, UpdateMemoryInput };
+export { buildMemoryFileContent, MEMORY_TYPES };
 
 // ─── Helpers ───
-
-export const MEMORY_TYPES = ["user", "feedback", "project", "reference"] as const;
 
 const VALID_TYPES = new Set<string>(MEMORY_TYPES);
 
@@ -74,14 +35,6 @@ function parseMemoryFile(fileName: string, raw: string, mtime: string): MemoryFi
   };
 }
 
-export function buildMemoryFileContent(input: {
-  name: string;
-  description: string;
-  type: string;
-  body: string;
-}): string {
-  return `---\nname: ${input.name}\ndescription: ${input.description}\ntype: ${input.type}\n---\n\n${input.body}\n`;
-}
 
 function buildMemoryIndexLine(input: { name: string; fileName: string; description: string }): string {
   return `- [${input.name}](${input.fileName}) — ${input.description}`;

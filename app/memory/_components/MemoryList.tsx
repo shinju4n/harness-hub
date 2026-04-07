@@ -1,6 +1,6 @@
 "use client";
 
-import type { MemoryFile } from "@/lib/memory-ops";
+import type { MemoryFile } from "@/lib/memory-types";
 
 interface MemoryListProps {
   memories: MemoryFile[];
