@@ -1,4 +1,4 @@
-import { createReadStream } from "fs";
+import { createReadStream, existsSync } from "fs";
 import { createInterface } from "readline";
 import path from "path";
 
@@ -23,13 +23,9 @@ export interface HistoryPage {
 
 async function* iterateHistory(claudeHome: string): AsyncGenerator<HistoryEntry> {
   const filePath = path.join(claudeHome, "history.jsonl");
-  let stream;
-  try {
-    stream = createReadStream(filePath, { encoding: "utf-8" });
-  } catch {
-    return;
-  }
+  if (!existsSync(filePath)) return;
 
+  const stream = createReadStream(filePath, { encoding: "utf-8" });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
   try {
     for await (const line of rl) {
@@ -48,6 +44,10 @@ async function* iterateHistory(claudeHome: string): AsyncGenerator<HistoryEntry>
         // skip malformed line
       }
     }
+  } catch {
+    // stream error (ENOENT on a race, disk unplugged, etc.) — return what we
+    // have collected so far rather than propagating.
+    return;
   } finally {
     rl.close();
     stream.destroy();
@@ -55,21 +55,33 @@ async function* iterateHistory(claudeHome: string): AsyncGenerator<HistoryEntry>
 }
 
 export async function readHistory(claudeHome: string, query: HistoryQuery): Promise<HistoryPage> {
-  const all: HistoryEntry[] = [];
+  const offset = Math.max(0, query.offset ?? 0);
+  // Ring buffer holds only the last `offset + limit` matching entries, so
+  // memory stays bounded regardless of file size.
+  const capacity = offset + query.limit;
+  const buffer: HistoryEntry[] = [];
+  let total = 0;
+
   try {
     for await (const entry of iterateHistory(claudeHome)) {
       if (query.project && entry.project !== query.project) continue;
-      all.push(entry);
+      total += 1;
+      if (capacity <= 0) continue;
+      buffer.push(entry);
+      if (buffer.length > capacity) {
+        buffer.shift();
+      }
     }
   } catch {
     return { entries: [], total: 0 };
   }
 
-  // Newest-first: JSONL is append-only so reverse is newest.
-  all.reverse();
-  const offset = query.offset ?? 0;
-  const entries = all.slice(offset, offset + query.limit);
-  return { entries, total: all.length };
+  // buffer now holds the last `capacity` chronological entries (oldest →
+  // newest within the window). Reverse to newest-first, then drop the
+  // `offset` leading items to produce the requested page.
+  buffer.reverse();
+  const entries = buffer.slice(offset, offset + query.limit);
+  return { entries, total };
 }
 
 export async function listHistoryProjects(claudeHome: string): Promise<string[]> {

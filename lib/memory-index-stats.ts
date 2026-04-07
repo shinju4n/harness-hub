@@ -27,7 +27,7 @@ export function computeMemoryIndexStats(content: string | null): MemoryIndexStat
     };
   }
 
-  const lines = content.split("\n").length;
+  const lines = countLogicalLines(content);
   const bytes = Buffer.byteLength(content, "utf-8");
   return {
     exists: true,
@@ -38,4 +38,18 @@ export function computeMemoryIndexStats(content: string | null): MemoryIndexStat
     overLineLimit: lines > MEMORY_INDEX_LINE_LIMIT,
     overByteLimit: bytes > MEMORY_INDEX_BYTE_LIMIT,
   };
+}
+
+/**
+ * Counts "logical lines" the way an editor does:
+ *   ""        → 0
+ *   "a"       → 1
+ *   "a\n"     → 1   (trailing newline is a terminator, not an empty line)
+ *   "a\nb"    → 2
+ *   "a\nb\n"  → 2
+ */
+function countLogicalLines(content: string): number {
+  if (content.length === 0) return 0;
+  const newlines = (content.match(/\n/g) ?? []).length;
+  return content.endsWith("\n") ? newlines : newlines + 1;
 }

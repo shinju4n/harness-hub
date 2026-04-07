@@ -59,6 +59,21 @@ describe("sessions-ops", () => {
     expect(sessions).toHaveLength(1);
   });
 
+  it("ignores hidden (dotfile) JSON files", async () => {
+    await writeFile(
+      path.join(sessionsDir, ".tmp.json"),
+      JSON.stringify({ pid: 1, sessionId: "hidden", cwd: "/", startedAt: 1, kind: "interactive", entrypoint: "cli" })
+    );
+    await writeFile(
+      path.join(sessionsDir, "ok.json"),
+      JSON.stringify({ pid: 2, sessionId: "real", cwd: "/", startedAt: 2, kind: "interactive", entrypoint: "cli" })
+    );
+
+    const sessions = await readSessions(tmpHome);
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].sessionId).toBe("real");
+  });
+
   it("skips malformed JSON instead of throwing", async () => {
     await writeFile(path.join(sessionsDir, "bad.json"), "{not valid json");
     await writeFile(

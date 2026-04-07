@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readPlans, readPlan } from "../plans-ops";
 import { writeFile, mkdir, rm, utimes } from "fs/promises";
+// path imported below
 import path from "path";
 import os from "os";
 
@@ -89,6 +90,24 @@ describe("plans-ops", () => {
     it("rejects unsafe names", async () => {
       await expect(readPlan(tmpHome, "../etc/passwd")).rejects.toThrow();
       await expect(readPlan(tmpHome, "a/b")).rejects.toThrow();
+    });
+
+    it("rejects null byte injection", async () => {
+      await expect(readPlan(tmpHome, "ok\u0000.md")).rejects.toThrow();
+    });
+
+    it("rejects Windows drive-letter prefix", async () => {
+      await expect(readPlan(tmpHome, "C:evil")).rejects.toThrow();
+    });
+
+    it("rejects empty name", async () => {
+      await expect(readPlan(tmpHome, "")).rejects.toThrow();
+    });
+
+    it("accepts typical plan slugs with dots, dashes, underscores", async () => {
+      await writeFile(path.join(plansDir, "refactor_auth-v2.md"), "# ok");
+      const result = await readPlan(tmpHome, "refactor_auth-v2");
+      expect(result).not.toBeNull();
     });
   });
 });

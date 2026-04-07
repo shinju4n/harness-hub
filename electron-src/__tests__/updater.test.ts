@@ -191,14 +191,44 @@ describe("createUpdaterController", () => {
     expect(() => controller.start()).not.toThrow();
   });
 
-  it("quitAndInstall() delegates to the updater when available", () => {
+  it("quitAndInstall() is a no-op before update-downloaded has fired", () => {
     const updater = createFakeUpdater();
     const controller = createUpdaterController({ updater, enabled: true });
     controller.start();
 
     controller.quitAndInstall();
 
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+  });
+
+  it("quitAndInstall() delegates to the updater only after the downloaded event", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+
+    updater.emit("update-downloaded", { version: "0.7.0" });
+    controller.quitAndInstall();
+
     expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls timer.unref when available so the interval does not keep the event loop alive", () => {
+    const updater = createFakeUpdater();
+    const unrefSpy = vi.fn();
+    const originalSetInterval = globalThis.setInterval;
+    const mockSetInterval = vi.fn((cb: () => void, ms: number) => {
+      const handle = originalSetInterval(cb, ms);
+      (handle as unknown as { unref: () => void }).unref = unrefSpy;
+      return handle;
+    });
+    vi.stubGlobal("setInterval", mockSetInterval);
+
+    const controller = createUpdaterController({ updater, enabled: true, intervalMs: 1000 });
+    controller.start();
+
+    expect(unrefSpy).toHaveBeenCalled();
+    controller.stop();
+    vi.unstubAllGlobals();
   });
 
   it("defaults intervalMs to 1 hour when not specified", () => {

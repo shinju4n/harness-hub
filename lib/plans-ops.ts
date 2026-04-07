@@ -19,8 +19,14 @@ export interface PlanDetail {
   mtime: number;
 }
 
+// Whitelist: alphanumerics, dash, underscore, dot. Rejects path traversal,
+// null bytes, Windows drive-letter prefixes, and empty strings by construction.
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 function isSafeName(name: string): boolean {
-  return !(name.includes("..") || name.includes("/") || name.includes("\\"));
+  if (!name || name.length > 255) return false;
+  if (name.includes("..")) return false;
+  return SAFE_NAME.test(name);
 }
 
 export async function readPlans(claudeHome: string): Promise<PlanSummary[]> {
@@ -65,13 +71,13 @@ export async function readPlan(claudeHome: string, name: string): Promise<PlanDe
   const parsed = await readMarkdownFile(filePath);
   if (!parsed.data) return null;
 
-  let rawContent = "";
-  let mtime = 0;
-  try {
-    rawContent = await readFile(filePath, "utf-8");
-    const s = await stat(filePath);
-    mtime = s.mtimeMs;
-  } catch {}
+  // If the markdown parsed, the file is readable — any error from the follow-up
+  // readFile/stat is a genuine race and should propagate rather than being
+  // silently flattened to zeros.
+  const [rawContent, fileStat] = await Promise.all([
+    readFile(filePath, "utf-8"),
+    stat(filePath),
+  ]);
 
   return {
     name,
@@ -79,6 +85,6 @@ export async function readPlan(claudeHome: string, name: string): Promise<PlanDe
     frontmatter: parsed.data.frontmatter,
     content: parsed.data.content,
     rawContent,
-    mtime,
+    mtime: fileStat.mtimeMs,
   };
 }

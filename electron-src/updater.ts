@@ -6,9 +6,15 @@ export interface UpdaterLike {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
   logger: unknown;
-  checkForUpdates(): Promise<unknown>;
+  /**
+   * electron-updater returns `Promise<UpdateCheckResult | null>` — null when
+   * the updater has been cancelled or is not configured. We accept the `null`
+   * case so callers can `checkForUpdates().catch(...)` safely only when the
+   * result is actually a promise.
+   */
+  checkForUpdates(): Promise<unknown> | null;
   quitAndInstall?: () => void;
-  on(event: string, listener: (...args: unknown[]) => void): unknown;
+  on(event: string, listener: (...args: unknown[]) => void): this;
 }
 
 export type UpdaterEvent =
@@ -44,6 +50,7 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let wired = false;
+  let downloaded = false;
 
   const emit = (event: UpdaterEvent) => {
     try {
@@ -68,6 +75,7 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
       emit({ type: "progress", percent: Math.round(raw) });
     });
     updater.on("update-downloaded", (info: unknown) => {
+      downloaded = true;
       const version = extractVersion(info);
       emit({ type: "downloaded", version });
     });
@@ -80,8 +88,8 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
   const probe = () => {
     try {
       const maybe = updater.checkForUpdates();
-      // checkForUpdates returns a Promise; attach rejection handler so unhandled
-      // promise rejections don't crash the main process.
+      // checkForUpdates may return null when the updater is disabled; only
+      // attach a rejection handler if the return value is actually a promise.
       if (maybe && typeof (maybe as Promise<unknown>).catch === "function") {
         (maybe as Promise<unknown>).catch((err) => {
           const message = err instanceof Error ? err.message : String(err);
@@ -109,6 +117,10 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
 
       if (timer) clearInterval(timer);
       timer = setInterval(probe, intervalMs);
+      // Prevent the poll timer from keeping the Node/Electron event loop
+      // alive during shutdown. Some environments (JSDOM, browsers) do not
+      // implement unref; guard accordingly.
+      (timer as unknown as { unref?: () => void }).unref?.();
     },
 
     stop() {
@@ -119,6 +131,10 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
     },
 
     quitAndInstall() {
+      // Only safe after update-downloaded has fired; electron-updater will
+      // otherwise throw, and we don't want a misbehaving IPC caller to bring
+      // the main process down.
+      if (!downloaded) return;
       updater.quitAndInstall?.();
     },
   };

@@ -65,6 +65,39 @@ describe("history-ops", () => {
     expect(page2.entries[0].display).toBe("cmd14");
   });
 
+  it("returns correct slice at the last page boundary", async () => {
+    const lines = Array.from({ length: 20 }, (_, i) => ({
+      display: `cmd${i}`,
+      timestamp: 1000 + i,
+      project: "/a",
+      sessionId: "s",
+    }));
+    await writeHistory(lines);
+
+    // offset 19, limit 5 → only the oldest entry remains
+    const page = await readHistory(tmpHome, { limit: 5, offset: 19 });
+    expect(page.entries).toHaveLength(1);
+    expect(page.entries[0].display).toBe("cmd0");
+    expect(page.total).toBe(20);
+  });
+
+  it("uses bounded memory: offset + limit buffer regardless of file size", async () => {
+    // Write 5000 lines — bounded impl must not grow an array of 5000 entries.
+    const lines = Array.from({ length: 5000 }, (_, i) => ({
+      display: `cmd${i}`,
+      timestamp: 1000 + i,
+      project: "/a",
+      sessionId: "s",
+    }));
+    await writeHistory(lines);
+
+    const page = await readHistory(tmpHome, { limit: 10, offset: 0 });
+    expect(page.entries).toHaveLength(10);
+    expect(page.entries[0].display).toBe("cmd4999");
+    expect(page.entries[9].display).toBe("cmd4990");
+    expect(page.total).toBe(5000);
+  });
+
   it("filters by project", async () => {
     await writeHistory([
       { display: "a1", timestamp: 1, project: "/alpha", sessionId: "s" },

@@ -44,6 +44,10 @@ mac:
   icon: build/icon.icns
   hardenedRuntime: true
   gatekeeperAssess: false
+  # Notarization requires Apple Developer credentials (APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID). electron-builder auto-skips
+  # with a warning when these are missing, so local dmg builds still succeed
+  # — they just ship unsigned, unnotarized, and are only useful for testing.
   notarize: true
 win:
   target:

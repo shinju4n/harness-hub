@@ -14,7 +14,6 @@ export interface SessionInfo {
 
 export async function readSessions(claudeHome: string): Promise<SessionInfo[]> {
   const sessionsDir = path.join(claudeHome, "sessions");
-  const sessions: SessionInfo[] = [];
 
   let files: string[];
   try {
@@ -23,23 +22,31 @@ export async function readSessions(claudeHome: string): Promise<SessionInfo[]> {
     return [];
   }
 
-  for (const file of files) {
-    if (!file.endsWith(".json")) continue;
-    const result = await readJsonFile<Partial<SessionInfo>>(path.join(sessionsDir, file));
-    if (!result.data) continue;
-    const d = result.data;
-    if (typeof d.pid !== "number" || typeof d.sessionId !== "string") continue;
-    sessions.push({
-      pid: d.pid,
-      sessionId: d.sessionId,
-      cwd: d.cwd ?? "",
-      startedAt: typeof d.startedAt === "number" ? d.startedAt : 0,
-      kind: d.kind ?? "",
-      entrypoint: d.entrypoint ?? "",
-      fileName: file,
-    });
-  }
+  const candidates = files.filter(
+    (f) => f.endsWith(".json") && !f.startsWith(".")
+  );
 
-  sessions.sort((a, b) => b.startedAt - a.startedAt);
-  return sessions;
+  // Parse session files in parallel — a few hundred small JSONs otherwise
+  // serialize into a visible stall on slow disks.
+  const parsed = await Promise.all(
+    candidates.map(async (file): Promise<SessionInfo | null> => {
+      const result = await readJsonFile<Partial<SessionInfo>>(path.join(sessionsDir, file));
+      if (!result.data) return null;
+      const d = result.data;
+      if (typeof d.pid !== "number" || typeof d.sessionId !== "string") return null;
+      return {
+        pid: d.pid,
+        sessionId: d.sessionId,
+        cwd: d.cwd ?? "",
+        startedAt: typeof d.startedAt === "number" ? d.startedAt : 0,
+        kind: d.kind ?? "",
+        entrypoint: d.entrypoint ?? "",
+        fileName: file,
+      };
+    })
+  );
+
+  return parsed
+    .filter((s): s is SessionInfo => s !== null)
+    .sort((a, b) => b.startedAt - a.startedAt);
 }

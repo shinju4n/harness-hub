@@ -1,7 +1,16 @@
-import { readFile, writeFile, access } from "fs/promises";
+import { readFile, writeFile, access, stat } from "fs/promises";
 import path from "path";
 
 export type ClaudeMdScopeId = "user" | "project" | "local" | "org";
+
+export interface ScopeResolveOptions {
+  /**
+   * Absolute path to the user's project root, needed to resolve `project`
+   * and `local` scopes (`<root>/CLAUDE.md` and `<root>/CLAUDE.local.md`).
+   * When omitted, those scopes are returned as `available: false`.
+   */
+  projectRoot?: string;
+}
 
 export interface ClaudeMdScope {
   id: ClaudeMdScopeId;
@@ -10,6 +19,8 @@ export interface ClaudeMdScope {
   filePath: string;
   exists: boolean;
   writable: boolean;
+  available: boolean;
+  unavailableReason?: string;
 }
 
 export interface ClaudeMdScopeContent {
@@ -32,28 +43,26 @@ function getOrgClaudeMdPath(): string {
   return "/etc/claude-code/CLAUDE.md";
 }
 
-function resolveScopePath(id: ClaudeMdScopeId, claudeHome: string): string {
-  const parent = path.dirname(claudeHome);
-  switch (id) {
-    case "user":
-      return path.join(claudeHome, "CLAUDE.md");
-    case "project":
-      return path.join(parent, "CLAUDE.md");
-    case "local":
-      return path.join(parent, "CLAUDE.local.md");
-    case "org":
-      return getOrgClaudeMdPath();
-  }
-}
-
 function describeScope(id: ClaudeMdScopeId): { label: string; description: string; writable: boolean } {
   switch (id) {
     case "user":
-      return { label: "User", description: "Personal instructions loaded in every session (~/.claude/CLAUDE.md)", writable: true };
+      return {
+        label: "User",
+        description: "Personal instructions loaded in every session (~/.claude/CLAUDE.md)",
+        writable: true,
+      };
     case "project":
-      return { label: "Project", description: "Project-specific instructions (parent/CLAUDE.md)", writable: true };
+      return {
+        label: "Project",
+        description: "Project-specific instructions (<projectRoot>/CLAUDE.md)",
+        writable: true,
+      };
     case "local":
-      return { label: "Local", description: "Local override, typically gitignored (parent/CLAUDE.local.md)", writable: true };
+      return {
+        label: "Local",
+        description: "Local override, typically gitignored (<projectRoot>/CLAUDE.local.md)",
+        writable: true,
+      };
     case "org":
       return { label: "Organization", description: "Organization-wide instructions (read-only)", writable: false };
   }
@@ -68,22 +77,102 @@ async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-export async function listClaudeMdScopes(claudeHome: string): Promise<ClaudeMdScope[]> {
+interface ValidatedProjectRoot {
+  ok: true;
+  absolute: string;
+}
+interface InvalidProjectRoot {
+  ok: false;
+  reason: string;
+}
+
+async function validateProjectRoot(
+  projectRoot: string | undefined
+): Promise<ValidatedProjectRoot | InvalidProjectRoot> {
+  if (!projectRoot) {
+    return { ok: false, reason: "Requires a project root path" };
+  }
+  if (projectRoot.includes("\u0000")) {
+    return { ok: false, reason: "Project root contains invalid characters" };
+  }
+  if (!path.isAbsolute(projectRoot)) {
+    return { ok: false, reason: "Project root must be absolute" };
+  }
+  try {
+    const s = await stat(projectRoot);
+    if (!s.isDirectory()) {
+      return { ok: false, reason: "Project root is not a directory" };
+    }
+  } catch {
+    return { ok: false, reason: "Project root not found" };
+  }
+  return { ok: true, absolute: path.resolve(projectRoot) };
+}
+
+export async function listClaudeMdScopes(
+  claudeHome: string,
+  opts: ScopeResolveOptions = {}
+): Promise<ClaudeMdScope[]> {
+  const projectResult = await validateProjectRoot(opts.projectRoot);
+
   const scopes = await Promise.all(
-    SCOPE_ORDER.map(async (id) => {
-      const filePath = resolveScopePath(id, claudeHome);
+    SCOPE_ORDER.map(async (id): Promise<ClaudeMdScope> => {
       const meta = describeScope(id);
-      const exists = await fileExists(filePath);
+
+      if (id === "user") {
+        const filePath = path.join(claudeHome, "CLAUDE.md");
+        return {
+          id,
+          label: meta.label,
+          description: meta.description,
+          filePath,
+          exists: await fileExists(filePath),
+          writable: true,
+          available: true,
+        };
+      }
+
+      if (id === "org") {
+        const filePath = getOrgClaudeMdPath();
+        return {
+          id,
+          label: meta.label,
+          description: meta.description,
+          filePath,
+          exists: await fileExists(filePath),
+          writable: false,
+          available: true,
+        };
+      }
+
+      // project or local — both need projectRoot
+      if (!projectResult.ok) {
+        return {
+          id,
+          label: meta.label,
+          description: meta.description,
+          filePath: "",
+          exists: false,
+          writable: false,
+          available: false,
+          unavailableReason: projectResult.reason,
+        };
+      }
+
+      const fileName = id === "project" ? "CLAUDE.md" : "CLAUDE.local.md";
+      const filePath = path.join(projectResult.absolute, fileName);
       return {
         id,
         label: meta.label,
         description: meta.description,
         filePath,
-        exists,
-        writable: meta.writable,
+        exists: await fileExists(filePath),
+        writable: true,
+        available: true,
       };
     })
   );
+
   return scopes;
 }
 
@@ -93,28 +182,49 @@ function assertKnownScope(id: string): asserts id is ClaudeMdScopeId {
   }
 }
 
-export async function readClaudeMdScope(claudeHome: string, id: ClaudeMdScopeId): Promise<ClaudeMdScopeContent> {
+async function resolveScopeFilePath(
+  id: ClaudeMdScopeId,
+  claudeHome: string,
+  opts: ScopeResolveOptions
+): Promise<string> {
+  if (id === "user") return path.join(claudeHome, "CLAUDE.md");
+  if (id === "org") return getOrgClaudeMdPath();
+
+  const projectResult = await validateProjectRoot(opts.projectRoot);
+  if (!projectResult.ok) {
+    throw new Error(`Cannot resolve ${id} scope: ${projectResult.reason}`);
+  }
+  const fileName = id === "project" ? "CLAUDE.md" : "CLAUDE.local.md";
+  return path.join(projectResult.absolute, fileName);
+}
+
+export async function readClaudeMdScope(
+  claudeHome: string,
+  id: ClaudeMdScopeId,
+  opts: ScopeResolveOptions = {}
+): Promise<ClaudeMdScopeContent> {
   assertKnownScope(id);
-  const filePath = resolveScopePath(id, claudeHome);
-  const meta = describeScope(id);
+  const filePath = await resolveScopeFilePath(id, claudeHome, opts);
+  const writable = describeScope(id).writable;
   try {
     const content = await readFile(filePath, "utf-8");
-    return { id, filePath, content, exists: true, writable: meta.writable };
+    return { id, filePath, content, exists: true, writable };
   } catch {
-    return { id, filePath, content: "", exists: false, writable: meta.writable };
+    return { id, filePath, content: "", exists: false, writable };
   }
 }
 
 export async function writeClaudeMdScope(
   claudeHome: string,
   id: ClaudeMdScopeId,
-  content: string
+  content: string,
+  opts: ScopeResolveOptions = {}
 ): Promise<void> {
   assertKnownScope(id);
   const meta = describeScope(id);
   if (!meta.writable) {
     throw new Error(`Scope "${id}" is read-only`);
   }
-  const filePath = resolveScopePath(id, claudeHome);
+  const filePath = await resolveScopeFilePath(id, claudeHome, opts);
   await writeFile(filePath, content, "utf-8");
 }

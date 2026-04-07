@@ -17,6 +17,8 @@ interface ScopeMeta {
   filePath: string;
   exists: boolean;
   writable: boolean;
+  available: boolean;
+  unavailableReason?: string;
 }
 
 interface ScopeContent {
@@ -33,6 +35,13 @@ export default function SettingsPage() {
   const [scopes, setScopes] = useState<ScopeMeta[]>([]);
   const [activeScope, setActiveScope] = useState<ScopeId>("user");
   const [scopeContent, setScopeContent] = useState<ScopeContent | null>(null);
+  const [projectRoot, setProjectRoot] = useState<string>("");
+  const [projectRootDraft, setProjectRootDraft] = useState<string>("");
+
+  const activeScopeRef = useRef(activeScope);
+  activeScopeRef.current = activeScope;
+  const projectRootRef = useRef(projectRoot);
+  projectRootRef.current = projectRoot;
 
   const fetchSettings = useCallback(() => {
     apiFetch("/api/settings")
@@ -40,24 +49,33 @@ export default function SettingsPage() {
       .then((d) => setSettings(d.settings));
   }, []);
 
+  const scopeQuery = useCallback((extra?: Record<string, string>) => {
+    const params = new URLSearchParams(extra);
+    if (projectRootRef.current) params.set("projectRoot", projectRootRef.current);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  }, []);
+
   const fetchScopes = useCallback(async () => {
-    const res = await apiFetch("/api/claude-md");
+    const res = await apiFetch(`/api/claude-md${scopeQuery()}`);
     if (res.ok) {
       const data = await res.json();
       setScopes(data.scopes ?? []);
     }
-  }, []);
+  }, [scopeQuery]);
 
-  const fetchScopeContent = useCallback(async (scope: ScopeId) => {
-    const res = await apiFetch(`/api/claude-md?scope=${scope}`);
-    if (res.ok) {
-      const data = await res.json();
-      setScopeContent(data);
-    }
-  }, []);
-
-  const activeScopeRef = useRef(activeScope);
-  activeScopeRef.current = activeScope;
+  const fetchScopeContent = useCallback(
+    async (scope: ScopeId) => {
+      const res = await apiFetch(`/api/claude-md${scopeQuery({ scope })}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScopeContent(data);
+      } else {
+        setScopeContent(null);
+      }
+    },
+    [scopeQuery]
+  );
 
   const refreshAll = useCallback(() => {
     fetchSettings();
@@ -68,8 +86,18 @@ export default function SettingsPage() {
   const { refresh } = usePolling(refreshAll);
 
   const handleScopeChange = (next: ScopeId) => {
+    const scope = scopes.find((s) => s.id === next);
+    if (scope && !scope.available) return;
     setActiveScope(next);
     fetchScopeContent(next);
+  };
+
+  const applyProjectRoot = async () => {
+    const next = projectRootDraft.trim();
+    setProjectRoot(next);
+    projectRootRef.current = next;
+    await fetchScopes();
+    await fetchScopeContent(activeScopeRef.current);
   };
 
   useEffect(() => {
@@ -79,10 +107,12 @@ export default function SettingsPage() {
 
   const saveClaudeMd = async (content: string) => {
     if (!scopeContent || !scopeContent.writable) return;
+    const body: Record<string, unknown> = { scope: activeScope, content };
+    if (projectRoot) body.projectRoot = projectRoot;
     const res = await apiFetch("/api/claude-md", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scope: activeScope, content }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
       setScopeContent({ ...scopeContent, content, exists: true });
@@ -147,23 +177,28 @@ export default function SettingsPage() {
           <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 w-fit">
             {scopes.map((s) => {
               const active = s.id === activeScope;
+              const disabled = !s.available;
               return (
                 <button
                   key={s.id}
                   onClick={() => handleScopeChange(s.id)}
+                  disabled={disabled}
+                  title={s.unavailableReason}
                   className={`px-3 py-1.5 text-xs rounded-md transition-all flex items-center gap-1.5 ${
                     active
                       ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                      : disabled
+                        ? "text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
                 >
                   {s.label}
-                  {s.exists ? (
+                  {s.available && s.exists ? (
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500" title="File exists" />
                   ) : (
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" title="File not found" />
                   )}
-                  {!s.writable && (
+                  {!s.writable && s.available && (
                     <span className="text-[9px] uppercase tracking-wide text-gray-400 dark:text-gray-500">RO</span>
                   )}
                 </button>
@@ -171,23 +206,56 @@ export default function SettingsPage() {
             })}
           </div>
 
+          {/* Project root input — required for project/local scopes */}
+          <div className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/50 space-y-1.5">
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400">
+              Project root (required for Project / Local scopes)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={projectRootDraft}
+                onChange={(e) => setProjectRootDraft(e.target.value)}
+                placeholder="/absolute/path/to/your/project"
+                className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+              />
+              <button
+                onClick={applyProjectRoot}
+                className="px-3 py-1.5 text-[12px] font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+            {projectRoot && (
+              <p className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">Active: {projectRoot}</p>
+            )}
+          </div>
+
           {/* Scope metadata */}
           {currentScopeMeta && (
             <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/50">
               <p className="text-xs text-gray-600 dark:text-gray-400">{currentScopeMeta.description}</p>
-              <p className="mt-1 text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate" title={currentScopeMeta.filePath}>
-                {currentScopeMeta.filePath}
-              </p>
-              {!currentScopeMeta.exists && (
+              {currentScopeMeta.available ? (
+                <>
+                  <p className="mt-1 text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate" title={currentScopeMeta.filePath}>
+                    {currentScopeMeta.filePath}
+                  </p>
+                  {!currentScopeMeta.exists && (
+                    <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                      File does not exist yet{currentScopeMeta.writable ? " — saving will create it" : ""}.
+                    </p>
+                  )}
+                </>
+              ) : (
                 <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
-                  File does not exist yet{currentScopeMeta.writable ? " — saving will create it" : ""}.
+                  Unavailable: {currentScopeMeta.unavailableReason}
                 </p>
               )}
             </div>
           )}
 
           {/* Editor */}
-          {scopeContent && (
+          {scopeContent && currentScopeMeta?.available && (
             <MarkdownViewer
               key={activeScope}
               content={scopeContent.content}

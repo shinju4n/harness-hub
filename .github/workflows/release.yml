@@ -110,5 +110,8 @@ jobs:
             artifacts/**/*.blockmap
             artifacts/**/latest*.yml
           generate_release_notes: true
+          # Fail loudly if any glob matches zero files — a missing latest*.yml
+          # silently ships a broken update channel otherwise.
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
