@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [scopeContent, setScopeContent] = useState<ScopeContent | null>(null);
   const [projectRoot, setProjectRoot] = useState<string>("");
   const [projectRootDraft, setProjectRootDraft] = useState<string>("");
+  const [projectRootError, setProjectRootError] = useState<string | null>(null);
 
   const activeScopeRef = useRef(activeScope);
   activeScopeRef.current = activeScope;
@@ -96,6 +97,37 @@ export default function SettingsPage() {
     const next = projectRootDraft.trim();
     setProjectRoot(next);
     projectRootRef.current = next;
+    setProjectRootError(null);
+
+    // Refetch scope metadata and surface validation failure from the lib
+    // layer (non-absolute path, not-a-directory, missing) as an inline
+    // error right next to the input instead of hiding it on a disabled tab.
+    const params = new URLSearchParams();
+    if (next) params.set("projectRoot", next);
+    const qs = params.toString();
+    const res = await apiFetch(`/api/claude-md${qs ? `?${qs}` : ""}`);
+    if (res.ok) {
+      const data = await res.json();
+      const scopeList: ScopeMeta[] = data.scopes ?? [];
+      setScopes(scopeList);
+      if (next) {
+        const proj = scopeList.find((s) => s.id === "project");
+        if (proj && !proj.available && proj.unavailableReason) {
+          setProjectRootError(proj.unavailableReason);
+        }
+      }
+    } else {
+      const err = await res.json().catch(() => ({ error: "request failed" }));
+      setProjectRootError(err.error ?? "request failed");
+    }
+    await fetchScopeContent(activeScopeRef.current);
+  };
+
+  const clearProjectRoot = async () => {
+    setProjectRootDraft("");
+    setProjectRoot("");
+    projectRootRef.current = "";
+    setProjectRootError(null);
     await fetchScopes();
     await fetchScopeContent(activeScopeRef.current);
   };
@@ -225,8 +257,19 @@ export default function SettingsPage() {
               >
                 Apply
               </button>
+              {projectRoot && (
+                <button
+                  onClick={clearProjectRoot}
+                  className="px-3 py-1.5 text-[12px] font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-            {projectRoot && (
+            {projectRootError && (
+              <p className="text-[11px] text-red-500 dark:text-red-400">{projectRootError}</p>
+            )}
+            {projectRoot && !projectRootError && (
               <p className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">Active: {projectRoot}</p>
             )}
           </div>

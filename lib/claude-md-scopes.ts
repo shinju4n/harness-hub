@@ -1,5 +1,7 @@
 import { readFile, writeFile, access, stat } from "fs/promises";
+import { realpathSync } from "fs";
 import path from "path";
+import os from "os";
 
 export type ClaudeMdScopeId = "user" | "project" | "local" | "org";
 
@@ -226,5 +228,47 @@ export async function writeClaudeMdScope(
     throw new Error(`Scope "${id}" is read-only`);
   }
   const filePath = await resolveScopeFilePath(id, claudeHome, opts);
+  verifyWriteTargetIsSafe(filePath);
   await writeFile(filePath, content, "utf-8");
+}
+
+/**
+ * Second-line TOCTOU defense: before committing a write, re-resolve the
+ * parent directory via realpath and verify it still lives under an allowed
+ * base. This does not eliminate the race entirely (a symlink could be
+ * swapped between this check and the `writeFile` call), but it closes the
+ * common window where a stale validation from request time is reused.
+ */
+function verifyWriteTargetIsSafe(filePath: string): void {
+  const parent = path.dirname(filePath);
+  let resolvedParent: string;
+  try {
+    resolvedParent = realpathSync(parent);
+  } catch {
+    // Parent does not exist; fall back to lexical check.
+    resolvedParent = path.resolve(parent);
+  }
+
+  const bases = [os.homedir(), os.tmpdir()];
+  try {
+    bases.push(realpathSync(os.tmpdir()));
+  } catch {
+    // ignore
+  }
+  const allowList = process.env.HARNESS_HUB_ALLOWED_HOMES;
+  if (allowList) {
+    for (const entry of allowList.split(path.delimiter)) {
+      const trimmed = entry.trim();
+      if (trimmed && path.isAbsolute(trimmed)) bases.push(trimmed);
+    }
+  }
+
+  const inside = bases.some((base) => {
+    if (!base) return false;
+    const rel = path.relative(base, resolvedParent);
+    return !rel.startsWith("..") && !path.isAbsolute(rel);
+  });
+  if (!inside) {
+    throw new Error(`Write target is outside allowed bases: ${filePath}`);
+  }
 }

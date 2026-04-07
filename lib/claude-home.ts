@@ -6,15 +6,21 @@ import os from "os";
 /**
  * Determine whether a user-supplied Claude home path is safe to operate on.
  *
- * The path comes from the `x-claude-home` request header, which means it is
- * untrusted input. Without validation, a caller could point the app at
- * `/etc/something/.claude` and drive arbitrary reads/writes through the
- * scope APIs. We require the resolved path (after symlink resolution if the
- * path exists) to live under either the user's home directory or the OS
- * temporary directory (for tests), or an explicit allow-list provided via
- * the `HARNESS_HUB_ALLOWED_HOMES` env var (colon-separated absolute paths).
+ * Both the `x-claude-home` request header and the `CLAUDE_HOME` env var are
+ * treated as untrusted: headers come from any local client and env vars can
+ * be set by any parent process / `.env` leak. We require the resolved path
+ * (after symlink resolution when it exists) to live under:
+ *   - the user's home directory
+ *   - the OS temporary directory (for tests)
+ *   - any explicit absolute path in `HARNESS_HUB_ALLOWED_HOMES`
+ *     (parsed with `path.delimiter` — `:` on posix, `;` on win32).
+ *
+ * NOTE on residual TOCTOU: we realpath at validation time, but any later
+ * `writeFile` re-resolves the path lexically, so a symlink swap between
+ * validation and write can still escape. Callers writing to these paths
+ * should realpath the final target at write time (see claude-md-scopes).
  */
-function validateOverridePath(resolved: string): void {
+function validateOverridePath(resolved: string, source: "override" | "env"): void {
   if (resolved.includes("\u0000")) {
     throw new Error("Claude home path contains invalid characters");
   }
@@ -30,8 +36,11 @@ function validateOverridePath(resolved: string): void {
 
   const allowList = process.env.HARNESS_HUB_ALLOWED_HOMES;
   if (allowList) {
-    for (const entry of allowList.split(":")) {
-      if (entry) bases.push(path.resolve(entry));
+    for (const entry of allowList.split(path.delimiter)) {
+      const trimmed = entry.trim();
+      if (trimmed && path.isAbsolute(trimmed)) {
+        bases.push(path.resolve(trimmed));
+      }
     }
   }
 
@@ -51,32 +60,36 @@ function validateOverridePath(resolved: string): void {
 
   if (!isInside) {
     throw new Error(
-      `Claude home path is outside the allowed base directories: ${resolved}`
+      `Claude home path is outside the allowed base directories (${source}): ${resolved}`
     );
   }
 }
 
+function resolveAndValidate(raw: string, source: "override" | "env"): string {
+  if (!path.isAbsolute(raw)) {
+    throw new Error(`Claude home path must be absolute (${source}): ${raw}`);
+  }
+  let resolved = path.resolve(raw);
+  // If path doesn't end with .claude, check if .claude subdir exists
+  if (!resolved.endsWith(".claude")) {
+    const withClaude = path.join(resolved, ".claude");
+    try {
+      if (existsSync(withClaude)) {
+        resolved = withClaude;
+      }
+    } catch {}
+  }
+  validateOverridePath(resolved, source);
+  return resolved;
+}
+
 export function getClaudeHome(override?: string | null): string {
   if (override && override !== "auto") {
-    if (!path.isAbsolute(override)) {
-      throw new Error("Claude home path must be absolute");
-    }
-    let resolved = path.resolve(override);
-    // If path doesn't end with .claude, check if .claude subdir exists
-    if (!resolved.endsWith(".claude")) {
-      const withClaude = path.join(resolved, ".claude");
-      try {
-        if (existsSync(withClaude)) {
-          resolved = withClaude;
-        }
-      } catch {}
-    }
-    validateOverridePath(resolved);
-    return resolved;
+    return resolveAndValidate(override, "override");
   }
 
   if (process.env.CLAUDE_HOME) {
-    return process.env.CLAUDE_HOME;
+    return resolveAndValidate(process.env.CLAUDE_HOME, "env");
   }
 
   const home = process.env.HOME || process.env.USERPROFILE;

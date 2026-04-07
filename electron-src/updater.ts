@@ -15,6 +15,8 @@ export interface UpdaterLike {
   checkForUpdates(): Promise<unknown> | null;
   quitAndInstall?: () => void;
   on(event: string, listener: (...args: unknown[]) => void): this;
+  off?(event: string, listener: (...args: unknown[]) => void): this;
+  removeAllListeners?(event?: string): this;
 }
 
 export type UpdaterEvent =
@@ -51,6 +53,9 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
   let timer: ReturnType<typeof setInterval> | null = null;
   let wired = false;
   let downloaded = false;
+  // Listener handles captured so stop() can tear them down cleanly and
+  // subsequent start() calls do not accumulate duplicates.
+  const registeredListeners: Array<{ event: string; listener: (...args: unknown[]) => void }> = [];
 
   const emit = (event: UpdaterEvent) => {
     try {
@@ -60,29 +65,43 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
     }
   };
 
+  const subscribe = (event: string, listener: (...args: unknown[]) => void) => {
+    updater.on(event, listener);
+    registeredListeners.push({ event, listener });
+  };
+
   const wireEvents = () => {
     if (wired) return;
     wired = true;
 
-    updater.on("checking-for-update", () => emit({ type: "checking" }));
-    updater.on("update-available", (info: unknown) => {
+    subscribe("checking-for-update", () => emit({ type: "checking" }));
+    subscribe("update-available", (info: unknown) => {
       const version = extractVersion(info);
       emit({ type: "available", version });
     });
-    updater.on("update-not-available", () => emit({ type: "not-available" }));
-    updater.on("download-progress", (info: unknown) => {
+    subscribe("update-not-available", () => emit({ type: "not-available" }));
+    subscribe("download-progress", (info: unknown) => {
       const raw = (info as { percent?: number } | undefined)?.percent ?? 0;
       emit({ type: "progress", percent: Math.round(raw) });
     });
-    updater.on("update-downloaded", (info: unknown) => {
+    subscribe("update-downloaded", (info: unknown) => {
       downloaded = true;
       const version = extractVersion(info);
       emit({ type: "downloaded", version });
     });
-    updater.on("error", (err: unknown) => {
+    subscribe("error", (err: unknown) => {
       const message = err instanceof Error ? err.message : String(err ?? "Unknown error");
       emit({ type: "error", message });
     });
+  };
+
+  const unwireEvents = () => {
+    if (!wired) return;
+    for (const { event, listener } of registeredListeners) {
+      updater.off?.(event, listener);
+    }
+    registeredListeners.length = 0;
+    wired = false;
   };
 
   const probe = () => {
@@ -118,9 +137,10 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
       if (timer) clearInterval(timer);
       timer = setInterval(probe, intervalMs);
       // Prevent the poll timer from keeping the Node/Electron event loop
-      // alive during shutdown. Some environments (JSDOM, browsers) do not
-      // implement unref; guard accordingly.
-      (timer as unknown as { unref?: () => void }).unref?.();
+      // alive during shutdown. Node's Timeout has `.unref()` natively; some
+      // test/browser shims may not, so guard accordingly.
+      const nodeTimer = timer as Partial<NodeJS.Timeout>;
+      if (typeof nodeTimer.unref === "function") nodeTimer.unref();
     },
 
     stop() {
@@ -128,6 +148,11 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
         clearInterval(timer);
         timer = null;
       }
+      // Reset one-shot state so a later start() cannot inherit a stale
+      // `downloaded=true` from a previous cycle and fire quitAndInstall
+      // without a fresh download actually happening.
+      downloaded = false;
+      unwireEvents();
     },
 
     quitAndInstall() {

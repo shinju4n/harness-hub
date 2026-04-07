@@ -112,6 +112,10 @@ jobs:
           generate_release_notes: true
           # Fail loudly if any glob matches zero files — a missing latest*.yml
           # silently ships a broken update channel otherwise.
+          # NOTE: this requires every glob below to populate. The build matrix
+          # must keep both macOS and Windows jobs; relaxing the matrix (e.g.
+          # via `if: ${{ !cancelled() }}`) without revisiting this flag will
+          # turn routine partial-build failures into release-step failures.
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

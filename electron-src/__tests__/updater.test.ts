@@ -5,6 +5,7 @@ import { createUpdaterController, type UpdaterLike, type UpdaterEvent } from "..
 // Build a fake electron-updater-compatible object backed by EventEmitter.
 function createFakeUpdater(): UpdaterLike & EventEmitter {
   const emitter = new EventEmitter();
+  // Give the real EventEmitter's on() the correct `this` return type.
   const fake = Object.assign(emitter, {
     autoDownload: false,
     autoInstallOnAppQuit: false,
@@ -210,6 +211,41 @@ describe("createUpdaterController", () => {
     controller.quitAndInstall();
 
     expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets the downloaded flag when stop() is called so a stale quitAndInstall cannot fire after restart", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+    updater.emit("update-downloaded", { version: "0.7.0" });
+
+    controller.stop();
+    controller.start();
+
+    // After restart without a fresh download event, quitAndInstall must not fire.
+    controller.quitAndInstall();
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+  });
+
+  it("does not accumulate duplicate listeners across start/stop cycles", () => {
+    const updater = createFakeUpdater();
+    const events: UpdaterEvent[] = [];
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+
+    controller.start();
+    controller.stop();
+    controller.start();
+    controller.stop();
+    controller.start();
+
+    updater.emit("update-not-available", {});
+
+    const notAvail = events.filter((e) => e.type === "not-available");
+    expect(notAvail).toHaveLength(1);
   });
 
   it("calls timer.unref when available so the interval does not keep the event loop alive", () => {

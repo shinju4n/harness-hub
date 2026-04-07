@@ -22,6 +22,9 @@ export async function readSessions(claudeHome: string): Promise<SessionInfo[]> {
     return [];
   }
 
+  // Skip dotfiles: Claude Code normally writes `<pid>.json` /
+  // `<sessionId>.json`, and stray `.tmp.json` partial writes (or editor
+  // swap files) should never appear in the UI.
   const candidates = files.filter(
     (f) => f.endsWith(".json") && !f.startsWith(".")
   );

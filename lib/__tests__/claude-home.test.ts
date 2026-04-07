@@ -8,9 +8,20 @@ describe("getClaudeHome", () => {
     vi.unstubAllEnvs();
   });
 
-  it("returns CLAUDE_HOME env if set", () => {
-    vi.stubEnv("CLAUDE_HOME", "/custom/path");
-    expect(getClaudeHome()).toBe("/custom/path");
+  it("returns CLAUDE_HOME env if set and inside an allowed base", () => {
+    const safe = path.join(os.homedir(), ".claude-test");
+    vi.stubEnv("CLAUDE_HOME", safe);
+    expect(getClaudeHome()).toBe(safe);
+  });
+
+  it("rejects CLAUDE_HOME env pointing at a system path", () => {
+    vi.stubEnv("CLAUDE_HOME", "/etc");
+    expect(() => getClaudeHome()).toThrow(/outside/i);
+  });
+
+  it("rejects CLAUDE_HOME env with a relative path", () => {
+    vi.stubEnv("CLAUDE_HOME", "relative");
+    expect(() => getClaudeHome()).toThrow();
   });
 
   it("falls back to HOME/.claude on posix", () => {
@@ -46,6 +57,15 @@ describe("getClaudeHome", () => {
 
     it("rejects null byte injection", () => {
       expect(() => getClaudeHome("/Users/test/.claude\u0000/../../etc")).toThrow();
+    });
+
+    it("parses HARNESS_HUB_ALLOWED_HOMES using the platform path delimiter", () => {
+      // On posix: `:` — on win32: `;`. Use the real delimiter so the test
+      // actually exercises the parsing path on the host platform.
+      const extra = path.join(os.tmpdir(), "custom-base");
+      vi.stubEnv("HARNESS_HUB_ALLOWED_HOMES", extra);
+      const override = path.join(extra, ".claude");
+      expect(() => getClaudeHome(override)).not.toThrow();
     });
   });
 });

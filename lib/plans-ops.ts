@@ -19,9 +19,11 @@ export interface PlanDetail {
   mtime: number;
 }
 
-// Whitelist: alphanumerics, dash, underscore, dot. Rejects path traversal,
-// null bytes, Windows drive-letter prefixes, and empty strings by construction.
-const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+// Whitelist: alphanumerics, dash, underscore, dot. Allows leading `_` so
+// slugs like `_draft` are accepted, but not leading `.` (dotfile) or other
+// punctuation. Rejects path traversal, null bytes, Windows drive-letter
+// prefixes, and empty strings by construction.
+const SAFE_NAME = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 
 function isSafeName(name: string): boolean {
   if (!name || name.length > 255) return false;

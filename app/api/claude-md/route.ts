@@ -14,11 +14,19 @@ function parseScope(value: string | null): ClaudeMdScopeId | null {
   return VALID_SCOPES.includes(value as ClaudeMdScopeId) ? (value as ClaudeMdScopeId) : null;
 }
 
-function parseProjectRoot(value: string | null): string | undefined {
-  if (!value) return undefined;
-  // Absolute + no null bytes; full validation lives in claude-md-scopes.
-  if (value.includes("\u0000")) return undefined;
-  return value;
+type ProjectRootResult =
+  | { ok: true; value: string | undefined }
+  | { ok: false; error: string };
+
+function parseProjectRoot(value: string | null | undefined): ProjectRootResult {
+  if (value == null || value === "") return { ok: true, value: undefined };
+  if (typeof value !== "string") {
+    return { ok: false, error: "projectRoot must be a string" };
+  }
+  if (value.includes("\u0000")) {
+    return { ok: false, error: "projectRoot contains invalid characters" };
+  }
+  return { ok: true, value };
 }
 
 export async function GET(request: NextRequest) {
@@ -26,7 +34,11 @@ export async function GET(request: NextRequest) {
     const claudeHome = getClaudeHomeFromRequest(request);
     const params = request.nextUrl.searchParams;
     const scope = parseScope(params.get("scope"));
-    const projectRoot = parseProjectRoot(params.get("projectRoot"));
+    const projectRootResult = parseProjectRoot(params.get("projectRoot"));
+    if (!projectRootResult.ok) {
+      return NextResponse.json({ error: projectRootResult.error }, { status: 400 });
+    }
+    const projectRoot = projectRootResult.value;
 
     if (scope) {
       const result = await readClaudeMdScope(claudeHome, scope, { projectRoot });
@@ -51,9 +63,13 @@ export async function PUT(request: NextRequest) {
     if (typeof content !== "string") {
       return NextResponse.json({ error: "content must be a string" }, { status: 400 });
     }
-    const safeProjectRoot =
-      typeof projectRoot === "string" ? parseProjectRoot(projectRoot) : undefined;
-    await writeClaudeMdScope(claudeHome, parsed, content, { projectRoot: safeProjectRoot });
+    const projectRootResult = parseProjectRoot(projectRoot);
+    if (!projectRootResult.ok) {
+      return NextResponse.json({ error: projectRootResult.error }, { status: 400 });
+    }
+    await writeClaudeMdScope(claudeHome, parsed, content, {
+      projectRoot: projectRootResult.value,
+    });
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });

@@ -56,10 +56,13 @@ async function* iterateHistory(claudeHome: string): AsyncGenerator<HistoryEntry>
 
 export async function readHistory(claudeHome: string, query: HistoryQuery): Promise<HistoryPage> {
   const offset = Math.max(0, query.offset ?? 0);
-  // Ring buffer holds only the last `offset + limit` matching entries, so
-  // memory stays bounded regardless of file size.
   const capacity = offset + query.limit;
-  const buffer: HistoryEntry[] = [];
+
+  // True circular buffer: constant-time insert, O(capacity) drain. Avoids
+  // the O(n × capacity) cost of Array#shift on pathologically large files.
+  const ring: (HistoryEntry | undefined)[] = new Array(capacity);
+  let head = 0;    // next insert slot
+  let size = 0;    // number of valid entries currently in the ring
   let total = 0;
 
   try {
@@ -67,20 +70,27 @@ export async function readHistory(claudeHome: string, query: HistoryQuery): Prom
       if (query.project && entry.project !== query.project) continue;
       total += 1;
       if (capacity <= 0) continue;
-      buffer.push(entry);
-      if (buffer.length > capacity) {
-        buffer.shift();
-      }
+      ring[head] = entry;
+      head = (head + 1) % capacity;
+      if (size < capacity) size += 1;
     }
   } catch {
     return { entries: [], total: 0 };
   }
 
-  // buffer now holds the last `capacity` chronological entries (oldest →
-  // newest within the window). Reverse to newest-first, then drop the
-  // `offset` leading items to produce the requested page.
-  buffer.reverse();
-  const entries = buffer.slice(offset, offset + query.limit);
+  if (size === 0) return { entries: [], total };
+
+  // The ring now holds the last `size` chronological entries. The oldest
+  // sits at `(head - size + capacity) % capacity`. Drain into a newest-first
+  // array for slicing.
+  const newestFirst: HistoryEntry[] = new Array(size);
+  for (let i = 0; i < size; i += 1) {
+    const chronoIndex = (head - size + i + capacity) % capacity;
+    // Reverse while we copy: oldest chrono → end of result, newest → start.
+    newestFirst[size - 1 - i] = ring[chronoIndex]!;
+  }
+
+  const entries = newestFirst.slice(offset, offset + query.limit);
   return { entries, total };
 }
 

@@ -109,5 +109,15 @@ describe("plans-ops", () => {
       const result = await readPlan(tmpHome, "refactor_auth-v2");
       expect(result).not.toBeNull();
     });
+
+    it("accepts slugs with leading underscore (e.g. _draft)", async () => {
+      await writeFile(path.join(plansDir, "_draft.md"), "# draft");
+      const result = await readPlan(tmpHome, "_draft");
+      expect(result).not.toBeNull();
+    });
+
+    it("rejects slugs with leading dot (dotfiles)", async () => {
+      await expect(readPlan(tmpHome, ".hidden")).rejects.toThrow();
+    });
   });
 });
