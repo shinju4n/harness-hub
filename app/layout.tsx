@@ -24,7 +24,7 @@ export default function RootLayout({
         <SidebarWrapper />
         <div className="flex flex-1 flex-col overflow-hidden min-w-0">
           <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
               {children}
             </div>
           </main>

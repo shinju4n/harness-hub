@@ -1,4 +1,4 @@
-import { readdir } from "fs/promises";
+import { readdir, lstat, unlink } from "fs/promises";
 import path from "path";
 import { readJsonFile } from "./file-ops";
 
@@ -52,4 +52,45 @@ export async function readSessions(claudeHome: string): Promise<SessionInfo[]> {
   return parsed
     .filter((s): s is SessionInfo => s !== null)
     .sort((a, b) => b.startedAt - a.startedAt);
+}
+
+function isSafeSessionFileName(fileName: string): boolean {
+  if (!fileName || fileName.length > 255) return false;
+  if (fileName.startsWith(".")) return false;
+  if (!fileName.endsWith(".json")) return false;
+  // Disallow path traversal and any directory separator.
+  return /^[A-Za-z0-9_-]+\.json$/.test(fileName);
+}
+
+/**
+ * Deletes a session file by basename. Caller passes the bare file name as
+ * returned in `SessionInfo.fileName` (e.g. `12345.json`); we never accept
+ * a relative or absolute path.
+ *
+ * Refuses to follow symlinks so a planted link inside ~/.claude/sessions
+ * cannot be used to delete arbitrary files.
+ */
+export async function deleteSession(claudeHome: string, fileName: string): Promise<boolean> {
+  if (!isSafeSessionFileName(fileName)) {
+    throw new Error(`Invalid session file name: ${fileName}`);
+  }
+  const filePath = path.join(claudeHome, "sessions", fileName);
+
+  try {
+    const info = await lstat(filePath);
+    if (info.isSymbolicLink()) {
+      throw new Error(`Refusing to operate on symlink: ${filePath}`);
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw err;
+  }
+
+  try {
+    await unlink(filePath);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw err;
+  }
 }

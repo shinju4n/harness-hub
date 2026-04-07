@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readSessions } from "../sessions-ops";
+import { readSessions, deleteSession } from "../sessions-ops";
 import { writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
 import os from "os";
@@ -98,5 +98,45 @@ describe("sessions-ops", () => {
 
     const sessions = await readSessions(tmpHome);
     expect(sessions.map((s) => s.sessionId)).toEqual(["new", "old"]);
+  });
+
+  describe("deleteSession", () => {
+    it("removes an existing session file", async () => {
+      await writeFile(
+        path.join(sessionsDir, "1234.json"),
+        JSON.stringify({ pid: 1234, sessionId: "s", cwd: "/", startedAt: 1, kind: "interactive", entrypoint: "cli" })
+      );
+      const ok = await deleteSession(tmpHome, "1234.json");
+      expect(ok).toBe(true);
+
+      const sessions = await readSessions(tmpHome);
+      expect(sessions).toHaveLength(0);
+    });
+
+    it("returns false when the session file does not exist", async () => {
+      const ok = await deleteSession(tmpHome, "ghost.json");
+      expect(ok).toBe(false);
+    });
+
+    it("rejects names containing path separators", async () => {
+      await expect(deleteSession(tmpHome, "../etc/passwd")).rejects.toThrow();
+      await expect(deleteSession(tmpHome, "a/b.json")).rejects.toThrow();
+    });
+
+    it("rejects names that do not end in .json", async () => {
+      await expect(deleteSession(tmpHome, "evil.sh")).rejects.toThrow();
+    });
+
+    it("refuses to delete through a symlink", async () => {
+      const decoy = path.join(tmpHome, "decoy.json");
+      await writeFile(decoy, '{"a":1}');
+      const { symlink } = await import("fs/promises");
+      await symlink(decoy, path.join(sessionsDir, "linked.json"));
+
+      await expect(deleteSession(tmpHome, "linked.json")).rejects.toThrow(/symlink/i);
+      const { readFile } = await import("fs/promises");
+      const raw = await readFile(decoy, "utf-8");
+      expect(raw).toBe('{"a":1}');
+    });
   });
 });

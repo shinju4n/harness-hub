@@ -1,4 +1,5 @@
 import { createReadStream, existsSync } from "fs";
+import { readFile, writeFile, rename } from "fs/promises";
 import { createInterface } from "readline";
 import path from "path";
 
@@ -92,6 +93,70 @@ export async function readHistory(claudeHome: string, query: HistoryQuery): Prom
 
   const entries = newestFirst.slice(offset, offset + query.limit);
   return { entries, total };
+}
+
+export interface HistoryEntryKey {
+  timestamp: number;
+  sessionId: string;
+  display: string;
+}
+
+/**
+ * Removes every line from history.jsonl whose parsed entry matches the given
+ * (timestamp, sessionId, display) tuple. JSONL has no stable record id, so
+ * exact-match on these three fields is the closest we can get to a primary
+ * key. Malformed lines are preserved verbatim — we only touch lines we can
+ * fully understand.
+ *
+ * Returns the number of entries removed (0 when nothing matched, including
+ * the case where the history file does not exist).
+ *
+ * Implementation: read entire file (currently ~MB scale), filter, write
+ * via tmp + rename for atomicity.
+ */
+export async function deleteHistoryEntry(
+  claudeHome: string,
+  key: HistoryEntryKey
+): Promise<number> {
+  const filePath = path.join(claudeHome, "history.jsonl");
+  if (!existsSync(filePath)) return 0;
+
+  const original = await readFile(filePath, "utf-8");
+  const lines = original.split("\n");
+  const kept: string[] = [];
+  let removed = 0;
+
+  for (const line of lines) {
+    if (!line) {
+      kept.push(line);
+      continue;
+    }
+    let parsed: Partial<HistoryEntry> | null = null;
+    try {
+      parsed = JSON.parse(line) as Partial<HistoryEntry>;
+    } catch {
+      // Malformed line — preserve verbatim, never silently drop user data.
+      kept.push(line);
+      continue;
+    }
+    if (
+      parsed &&
+      parsed.timestamp === key.timestamp &&
+      parsed.sessionId === key.sessionId &&
+      parsed.display === key.display
+    ) {
+      removed += 1;
+      continue;
+    }
+    kept.push(line);
+  }
+
+  if (removed === 0) return 0;
+
+  const tmpPath = filePath + ".tmp";
+  await writeFile(tmpPath, kept.join("\n"), "utf-8");
+  await rename(tmpPath, filePath);
+  return removed;
 }
 
 export async function listHistoryProjects(claudeHome: string): Promise<string[]> {

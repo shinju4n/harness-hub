@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readHistory, listHistoryProjects } from "../history-ops";
+import { readHistory, listHistoryProjects, deleteHistoryEntry } from "../history-ops";
 import { writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
 import os from "os";
@@ -129,5 +129,84 @@ describe("history-ops", () => {
     ]);
     const projects = await listHistoryProjects(tmpHome);
     expect(projects.sort()).toEqual(["/one", "/two"]);
+  });
+
+  describe("deleteHistoryEntry", () => {
+    it("removes the matching entry by (timestamp + sessionId + display)", async () => {
+      await writeHistory([
+        { display: "ls", timestamp: 1000, project: "/a", sessionId: "s1" },
+        { display: "pwd", timestamp: 2000, project: "/a", sessionId: "s1" },
+        { display: "echo hi", timestamp: 3000, project: "/a", sessionId: "s2" },
+      ]);
+
+      const removed = await deleteHistoryEntry(tmpHome, {
+        timestamp: 2000,
+        sessionId: "s1",
+        display: "pwd",
+      });
+      expect(removed).toBe(1);
+
+      const result = await readHistory(tmpHome, { limit: 100 });
+      expect(result.total).toBe(2);
+      expect(result.entries.map((e) => e.display)).toEqual(["echo hi", "ls"]);
+    });
+
+    it("returns 0 when no entry matches", async () => {
+      await writeHistory([
+        { display: "ls", timestamp: 1000, project: "/a", sessionId: "s1" },
+      ]);
+      const removed = await deleteHistoryEntry(tmpHome, {
+        timestamp: 9999,
+        sessionId: "s1",
+        display: "ls",
+      });
+      expect(removed).toBe(0);
+    });
+
+    it("removes all duplicate entries with the same (timestamp + sessionId + display)", async () => {
+      await writeHistory([
+        { display: "dup", timestamp: 1, project: "/a", sessionId: "s" },
+        { display: "dup", timestamp: 1, project: "/a", sessionId: "s" },
+        { display: "keep", timestamp: 2, project: "/a", sessionId: "s" },
+      ]);
+      const removed = await deleteHistoryEntry(tmpHome, {
+        timestamp: 1,
+        sessionId: "s",
+        display: "dup",
+      });
+      expect(removed).toBe(2);
+
+      const result = await readHistory(tmpHome, { limit: 10 });
+      expect(result.total).toBe(1);
+      expect(result.entries[0].display).toBe("keep");
+    });
+
+    it("preserves malformed lines that do not match the predicate", async () => {
+      const { writeFile } = await import("fs/promises");
+      const content =
+        JSON.stringify({ display: "keep", timestamp: 1, project: "/a", sessionId: "s" }) +
+        "\n%%%not json%%%\n" +
+        JSON.stringify({ display: "drop", timestamp: 2, project: "/a", sessionId: "s" }) +
+        "\n";
+      await writeFile(path.join(tmpHome, "history.jsonl"), content);
+
+      await deleteHistoryEntry(tmpHome, { timestamp: 2, sessionId: "s", display: "drop" });
+
+      // Malformed line is preserved verbatim
+      const { readFile } = await import("fs/promises");
+      const after = await readFile(path.join(tmpHome, "history.jsonl"), "utf-8");
+      expect(after).toContain("%%%not json%%%");
+      expect(after).not.toContain('"display":"drop"');
+      expect(after).toContain('"display":"keep"');
+    });
+
+    it("returns 0 when history file is missing", async () => {
+      const removed = await deleteHistoryEntry(tmpHome, {
+        timestamp: 1,
+        sessionId: "s",
+        display: "x",
+      });
+      expect(removed).toBe(0);
+    });
   });
 });

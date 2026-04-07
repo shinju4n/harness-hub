@@ -73,6 +73,26 @@ export default function HistoryPage() {
     fetchPage(0, next);
   };
 
+  const deleteEntry = async (entry: HistoryEntry) => {
+    const preview = entry.display.length > 60 ? entry.display.slice(0, 60) + "…" : entry.display;
+    if (!window.confirm(`Delete history entry?\n\n${preview}`)) return;
+    const res = await apiFetch("/api/history", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        timestamp: entry.timestamp,
+        sessionId: entry.sessionId,
+        display: entry.display,
+      }),
+    });
+    if (res.ok) {
+      fetchPage(offset, project);
+    } else {
+      const err = await res.json().catch(() => ({ error: "delete failed" }));
+      alert(err.error ?? "delete failed");
+    }
+  };
+
   useEffect(() => {
     fetchPage(0, projectRef.current);
     // Initial load only; subsequent filter changes go through handleProjectChange.
@@ -134,17 +154,28 @@ export default function HistoryPage() {
               </div>
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
                 {list.map((e, i) => (
-                  <div key={`${e.sessionId}-${e.timestamp}-${i}`} className="px-4 py-2.5">
+                  <div
+                    key={`${e.sessionId}-${e.timestamp}-${i}`}
+                    className="px-4 py-2.5 group"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <code className="flex-1 min-w-0 font-mono text-[12px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
                         {e.display}
                       </code>
-                      <span
-                        className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500"
-                        title={formatTimestamp(e.timestamp)}
-                      >
-                        {new Date(e.timestamp).toLocaleTimeString()}
-                      </span>
+                      <div className="flex items-start gap-2 shrink-0">
+                        <span
+                          className="text-[11px] text-gray-400 dark:text-gray-500"
+                          title={formatTimestamp(e.timestamp)}
+                        >
+                          {new Date(e.timestamp).toLocaleTimeString()}
+                        </span>
+                        <button
+                          onClick={() => deleteEntry(e)}
+                          className="opacity-0 group-hover:opacity-100 text-[11px] text-red-400 hover:text-red-600 transition-all px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     {!project && e.project && (
                       <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate">

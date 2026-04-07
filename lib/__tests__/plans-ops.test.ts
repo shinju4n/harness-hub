@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readPlans, readPlan } from "../plans-ops";
+import { readPlans, readPlan, writePlan, createPlan, deletePlan } from "../plans-ops";
 import { writeFile, mkdir, rm, utimes } from "fs/promises";
 // path imported below
 import path from "path";
@@ -118,6 +118,86 @@ describe("plans-ops", () => {
 
     it("rejects slugs with leading dot (dotfiles)", async () => {
       await expect(readPlan(tmpHome, ".hidden")).rejects.toThrow();
+    });
+  });
+
+  describe("writePlan", () => {
+    it("overwrites an existing plan", async () => {
+      await writeFile(path.join(plansDir, "x.md"), "# old");
+      await writePlan(tmpHome, "x", "# new content");
+      const result = await readPlan(tmpHome, "x");
+      expect(result?.rawContent).toBe("# new content");
+    });
+
+    it("rejects unsafe names", async () => {
+      await expect(writePlan(tmpHome, "../etc/passwd", "x")).rejects.toThrow();
+    });
+
+    it("refuses to overwrite a symlink target", async () => {
+      const decoy = path.join(tmpHome, "decoy.md");
+      await writeFile(decoy, "original");
+      const { symlink } = await import("fs/promises");
+      await symlink(decoy, path.join(plansDir, "evil.md"));
+
+      await expect(writePlan(tmpHome, "evil", "hijacked")).rejects.toThrow(/symlink/i);
+      const { readFile } = await import("fs/promises");
+      const raw = await readFile(decoy, "utf-8");
+      expect(raw).toBe("original");
+    });
+  });
+
+  describe("createPlan", () => {
+    it("creates a new plan", async () => {
+      await createPlan(tmpHome, "fresh", "# hello");
+      const result = await readPlan(tmpHome, "fresh");
+      expect(result?.rawContent).toBe("# hello");
+    });
+
+    it("creates the plans directory if it does not exist", async () => {
+      const { rm } = await import("fs/promises");
+      await rm(plansDir, { recursive: true, force: true });
+      await createPlan(tmpHome, "first", "# first");
+      const result = await readPlan(tmpHome, "first");
+      expect(result?.rawContent).toBe("# first");
+    });
+
+    it("refuses to clobber an existing plan", async () => {
+      await writeFile(path.join(plansDir, "x.md"), "original");
+      await expect(createPlan(tmpHome, "x", "new")).rejects.toThrow(/exists/i);
+    });
+
+    it("rejects unsafe names", async () => {
+      await expect(createPlan(tmpHome, "../etc/passwd", "x")).rejects.toThrow();
+    });
+  });
+
+  describe("deletePlan", () => {
+    it("removes an existing plan", async () => {
+      await writeFile(path.join(plansDir, "doomed.md"), "bye");
+      await deletePlan(tmpHome, "doomed");
+      const result = await readPlan(tmpHome, "doomed");
+      expect(result).toBeNull();
+    });
+
+    it("returns false when the plan does not exist", async () => {
+      const ok = await deletePlan(tmpHome, "ghost");
+      expect(ok).toBe(false);
+    });
+
+    it("rejects unsafe names", async () => {
+      await expect(deletePlan(tmpHome, "../etc/passwd")).rejects.toThrow();
+    });
+
+    it("refuses to delete through a symlink", async () => {
+      const decoy = path.join(tmpHome, "decoy.md");
+      await writeFile(decoy, "important");
+      const { symlink } = await import("fs/promises");
+      await symlink(decoy, path.join(plansDir, "linked.md"));
+
+      await expect(deletePlan(tmpHome, "linked")).rejects.toThrow(/symlink/i);
+      const { readFile } = await import("fs/promises");
+      const raw = await readFile(decoy, "utf-8");
+      expect(raw).toBe("important");
     });
   });
 });

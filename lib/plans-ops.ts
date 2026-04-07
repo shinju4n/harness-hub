@@ -1,4 +1,4 @@
-import { readdir, stat, readFile } from "fs/promises";
+import { readdir, stat, readFile, writeFile, mkdir, lstat, unlink } from "fs/promises";
 import path from "path";
 import { readMarkdownFile } from "./file-ops";
 
@@ -66,10 +66,33 @@ export async function readPlans(claudeHome: string): Promise<PlanSummary[]> {
   return plans;
 }
 
-export async function readPlan(claudeHome: string, name: string): Promise<PlanDetail | null> {
-  if (!isSafeName(name)) throw new Error("Invalid plan name");
+function plansDir(claudeHome: string): string {
+  return path.join(claudeHome, "plans");
+}
 
-  const filePath = path.join(claudeHome, "plans", `${name}.md`);
+function planPath(claudeHome: string, name: string): string {
+  if (!isSafeName(name)) throw new Error("Invalid plan name");
+  return path.join(plansDir(claudeHome), `${name}.md`);
+}
+
+/**
+ * Refuse to read/write/delete a path that is a symlink. Mirrors the
+ * defensive lstat check from claude-md-scopes — we never want to follow a
+ * planted symlink that points outside the plans directory.
+ */
+async function refuseSymlink(filePath: string): Promise<void> {
+  try {
+    const info = await lstat(filePath);
+    if (info.isSymbolicLink()) {
+      throw new Error(`Refusing to operate on symlink: ${filePath}`);
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+}
+
+export async function readPlan(claudeHome: string, name: string): Promise<PlanDetail | null> {
+  const filePath = planPath(claudeHome, name);
   const parsed = await readMarkdownFile(filePath);
   if (!parsed.data) return null;
 
@@ -89,4 +112,45 @@ export async function readPlan(claudeHome: string, name: string): Promise<PlanDe
     rawContent,
     mtime: fileStat.mtimeMs,
   };
+}
+
+export async function writePlan(
+  claudeHome: string,
+  name: string,
+  content: string
+): Promise<void> {
+  const filePath = planPath(claudeHome, name);
+  await mkdir(plansDir(claudeHome), { recursive: true });
+  await refuseSymlink(filePath);
+  await writeFile(filePath, content, "utf-8");
+}
+
+export async function createPlan(
+  claudeHome: string,
+  name: string,
+  content: string
+): Promise<void> {
+  const filePath = planPath(claudeHome, name);
+  await mkdir(plansDir(claudeHome), { recursive: true });
+  // wx flag → fail if file already exists, atomic against parallel creates
+  try {
+    await writeFile(filePath, content, { encoding: "utf-8", flag: "wx" });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new Error(`Plan already exists: ${name}`);
+    }
+    throw err;
+  }
+}
+
+export async function deletePlan(claudeHome: string, name: string): Promise<boolean> {
+  const filePath = planPath(claudeHome, name);
+  await refuseSymlink(filePath);
+  try {
+    await unlink(filePath);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw err;
+  }
 }

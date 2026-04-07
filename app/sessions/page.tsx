@@ -36,6 +36,7 @@ function formatAbsolute(ts: number): string {
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [filter, setFilter] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchSessions = () => {
     apiFetch("/api/sessions").then((r) => r.json()).then((d) => setSessions(d.sessions ?? []));
@@ -53,6 +54,22 @@ export default function SessionsPage() {
         String(s.pid).includes(q)
     );
   }, [sessions, filter]);
+
+  const deleteSession = async (fileName: string) => {
+    if (!window.confirm(`Delete session "${fileName}"?\n\nThis only removes the metadata file in ~/.claude/sessions/. The Claude Code process itself is not affected.`)) {
+      return;
+    }
+    const res = await apiFetch(`/api/sessions?file=${encodeURIComponent(fileName)}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      if (expanded === fileName) setExpanded(null);
+      fetchSessions();
+    } else {
+      const err = await res.json().catch(() => ({ error: "delete failed" }));
+      alert(err.error ?? "delete failed");
+    }
+  };
 
   return (
     <div>
@@ -83,43 +100,84 @@ export default function SessionsPage() {
       ) : (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
           <div className="divide-y divide-gray-50 dark:divide-gray-800">
-            {filtered.map((s) => (
-              <div key={s.fileName} className="px-4 py-3.5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <code className="font-mono text-[12px] text-gray-700 dark:text-gray-300 truncate">
-                        {s.sessionId}
-                      </code>
-                      {s.kind && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                          {s.kind}
-                        </span>
-                      )}
-                      {s.entrypoint && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                          {s.entrypoint}
-                        </span>
-                      )}
+            {filtered.map((s) => {
+              const isOpen = expanded === s.fileName;
+              return (
+                <div key={s.fileName}>
+                  <div className="px-4 py-3.5 group">
+                    <div className="flex items-start justify-between gap-4">
+                      <button
+                        onClick={() => setExpanded(isOpen ? null : s.fileName)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className={`shrink-0 text-gray-400 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                          >
+                            <path d="m9 18 6-6-6-6" />
+                          </svg>
+                          <code className="font-mono text-[12px] text-gray-700 dark:text-gray-300 truncate">
+                            {s.sessionId}
+                          </code>
+                          {s.kind && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                              {s.kind}
+                            </span>
+                          )}
+                          {s.entrypoint && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                              {s.entrypoint}
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate pl-5"
+                          title={s.cwd}
+                        >
+                          {s.cwd}
+                        </p>
+                      </button>
+                      <div className="flex items-start gap-3 shrink-0">
+                        <div className="text-right">
+                          <div
+                            className="text-xs text-gray-600 dark:text-gray-400"
+                            title={formatAbsolute(s.startedAt)}
+                          >
+                            {formatRelative(s.startedAt)}
+                          </div>
+                          <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                            pid {s.pid}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => deleteSession(s.fileName)}
+                          className="opacity-0 group-hover:opacity-100 text-xs text-red-400 hover:text-red-600 transition-all px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate" title={s.cwd}>
-                      {s.cwd}
-                    </p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div
-                      className="text-xs text-gray-600 dark:text-gray-400"
-                      title={formatAbsolute(s.startedAt)}
-                    >
-                      {formatRelative(s.startedAt)}
+                  {isOpen && (
+                    <div className="px-4 pb-4 pl-9">
+                      <pre className="text-[11px] font-mono bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-md p-3 overflow-x-auto text-gray-700 dark:text-gray-300">
+{JSON.stringify(s, null, 2)}
+                      </pre>
+                      <p className="mt-2 text-[10px] text-gray-400 dark:text-gray-500 font-mono">
+                        ~/.claude/sessions/{s.fileName}
+                      </p>
                     </div>
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
-                      pid {s.pid}
-                    </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
