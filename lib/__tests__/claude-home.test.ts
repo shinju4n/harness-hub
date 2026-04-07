@@ -24,6 +24,12 @@ describe("getClaudeHome", () => {
     expect(() => getClaudeHome()).toThrow();
   });
 
+  it("treats whitespace-only CLAUDE_HOME as unset (falls back to HOME/.claude)", () => {
+    vi.stubEnv("CLAUDE_HOME", "   ");
+    vi.stubEnv("HOME", "/Users/test");
+    expect(getClaudeHome()).toBe("/Users/test/.claude");
+  });
+
   it("falls back to HOME/.claude on posix", () => {
     vi.stubEnv("CLAUDE_HOME", "");
     vi.stubEnv("HOME", "/Users/test");

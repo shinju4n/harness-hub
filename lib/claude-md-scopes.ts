@@ -1,7 +1,6 @@
-import { readFile, writeFile, access, stat } from "fs/promises";
+import { readFile, writeFile, access, stat, lstat } from "fs/promises";
 import { realpathSync } from "fs";
 import path from "path";
-import os from "os";
 
 export type ClaudeMdScopeId = "user" | "project" | "local" | "org";
 
@@ -81,6 +80,7 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 interface ValidatedProjectRoot {
   ok: true;
+  /** Canonical (realpath'd) absolute path. Guaranteed to exist and be a directory. */
   absolute: string;
 }
 interface InvalidProjectRoot {
@@ -88,6 +88,14 @@ interface InvalidProjectRoot {
   reason: string;
 }
 
+/**
+ * Validates and canonicalizes a user-supplied project root path.
+ *
+ * The returned `absolute` path has been realpath-resolved so subsequent
+ * lexical joins (`path.join(absolute, "CLAUDE.md")`) cannot traverse into
+ * another directory via an intermediate symlink. Callers must ALSO guard
+ * against the final file being a symlink at write time (see writeClaudeMdScope).
+ */
 async function validateProjectRoot(
   projectRoot: string | undefined
 ): Promise<ValidatedProjectRoot | InvalidProjectRoot> {
@@ -108,7 +116,13 @@ async function validateProjectRoot(
   } catch {
     return { ok: false, reason: "Project root not found" };
   }
-  return { ok: true, absolute: path.resolve(projectRoot) };
+  let canonical: string;
+  try {
+    canonical = realpathSync(projectRoot);
+  } catch {
+    return { ok: false, reason: "Project root not found" };
+  }
+  return { ok: true, absolute: canonical };
 }
 
 export async function listClaudeMdScopes(
@@ -227,48 +241,37 @@ export async function writeClaudeMdScope(
   if (!meta.writable) {
     throw new Error(`Scope "${id}" is read-only`);
   }
+
   const filePath = await resolveScopeFilePath(id, claudeHome, opts);
-  verifyWriteTargetIsSafe(filePath);
-  await writeFile(filePath, content, "utf-8");
-}
 
-/**
- * Second-line TOCTOU defense: before committing a write, re-resolve the
- * parent directory via realpath and verify it still lives under an allowed
- * base. This does not eliminate the race entirely (a symlink could be
- * swapped between this check and the `writeFile` call), but it closes the
- * common window where a stale validation from request time is reused.
- */
-function verifyWriteTargetIsSafe(filePath: string): void {
-  const parent = path.dirname(filePath);
-  let resolvedParent: string;
+  // Scope invariant: each writable scope must stay inside its own root.
+  //   - user scope → under claudeHome
+  //   - project/local scope → under the realpath'd projectRoot
+  // projectRoot was already canonicalized in validateProjectRoot, so
+  // path.dirname(filePath) of a project write is ALWAYS `projectRoot` by
+  // construction. For user scope, claudeHome is already validated at the
+  // request boundary (getClaudeHome). So the only residual threat is a
+  // symlink planted at the final file path between validation and write;
+  // we defeat that with an lstat check.
+  //
+  // NOTE: a narrow TOCTOU window remains between lstat and writeFile. A
+  // racing attacker with write access to the parent directory could plant
+  // a symlink after the check. Closing that window requires open(...,
+  // O_NOFOLLOW), which Node's high-level fs API does not expose cleanly
+  // across platforms. The attacker would already need write access to the
+  // user's project or claude home directory, at which point they can
+  // modify the target anyway.
   try {
-    resolvedParent = realpathSync(parent);
-  } catch {
-    // Parent does not exist; fall back to lexical check.
-    resolvedParent = path.resolve(parent);
-  }
-
-  const bases = [os.homedir(), os.tmpdir()];
-  try {
-    bases.push(realpathSync(os.tmpdir()));
-  } catch {
-    // ignore
-  }
-  const allowList = process.env.HARNESS_HUB_ALLOWED_HOMES;
-  if (allowList) {
-    for (const entry of allowList.split(path.delimiter)) {
-      const trimmed = entry.trim();
-      if (trimmed && path.isAbsolute(trimmed)) bases.push(trimmed);
+    const info = await lstat(filePath);
+    if (info.isSymbolicLink()) {
+      throw new Error(`Refusing to write: target is a symlink (${filePath})`);
+    }
+  } catch (err) {
+    // ENOENT is fine — we're creating a new file.
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw err;
     }
   }
 
-  const inside = bases.some((base) => {
-    if (!base) return false;
-    const rel = path.relative(base, resolvedParent);
-    return !rel.startsWith("..") && !path.isAbsolute(rel);
-  });
-  if (!inside) {
-    throw new Error(`Write target is outside allowed bases: ${filePath}`);
-  }
+  await writeFile(filePath, content, "utf-8");
 }

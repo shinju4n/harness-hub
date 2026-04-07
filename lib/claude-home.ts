@@ -1,5 +1,5 @@
 import { access } from "fs/promises";
-import { existsSync, realpathSync } from "fs";
+import { statSync, realpathSync } from "fs";
 import path from "path";
 import os from "os";
 
@@ -20,14 +20,19 @@ import os from "os";
  * validation and write can still escape. Callers writing to these paths
  * should realpath the final target at write time (see claude-md-scopes).
  */
-function validateOverridePath(resolved: string, source: "override" | "env"): void {
-  if (resolved.includes("\u0000")) {
-    throw new Error("Claude home path contains invalid characters");
+function collectAllowedBases(): string[] {
+  const bases: string[] = [];
+
+  // Lexical homedir and its realpath — on some NFS/enterprise setups the
+  // user's `$HOME` is itself a symlink to the canonical path.
+  bases.push(os.homedir());
+  try {
+    bases.push(realpathSync(os.homedir()));
+  } catch {
+    // ignore
   }
 
-  const bases = [os.homedir(), os.tmpdir()];
-
-  // realpath of tmpdir on macOS is /private/var/... so also allow the realpath.
+  bases.push(os.tmpdir());
   try {
     bases.push(realpathSync(os.tmpdir()));
   } catch {
@@ -38,49 +43,79 @@ function validateOverridePath(resolved: string, source: "override" | "env"): voi
   if (allowList) {
     for (const entry of allowList.split(path.delimiter)) {
       const trimmed = entry.trim();
-      if (trimmed && path.isAbsolute(trimmed)) {
-        bases.push(path.resolve(trimmed));
+      if (!trimmed || !path.isAbsolute(trimmed)) continue;
+      bases.push(path.resolve(trimmed));
+      try {
+        bases.push(realpathSync(trimmed));
+      } catch {
+        // ignore
       }
     }
   }
 
-  // If the path exists, use its realpath to defeat symlink escapes.
-  let probe = resolved;
-  try {
-    probe = realpathSync(resolved);
-  } catch {
-    // Path does not exist yet — fall back to the lexical form.
-  }
+  return bases;
+}
 
-  const isInside = bases.some((base) => {
+function validateAgainstBases(probe: string, source: "override" | "env"): void {
+  const bases = collectAllowedBases();
+  const inside = bases.some((base) => {
     if (!base) return false;
     const relative = path.relative(base, probe);
     return !relative.startsWith("..") && !path.isAbsolute(relative);
   });
-
-  if (!isInside) {
+  if (!inside) {
     throw new Error(
-      `Claude home path is outside the allowed base directories (${source}): ${resolved}`
+      `Claude home path is outside the allowed base directories (${source}): ${probe}`
     );
   }
 }
 
 function resolveAndValidate(raw: string, source: "override" | "env"): string {
-  if (!path.isAbsolute(raw)) {
-    throw new Error(`Claude home path must be absolute (${source}): ${raw}`);
+  if (typeof raw !== "string") {
+    throw new Error(`Claude home path must be a string (${source})`);
   }
-  let resolved = path.resolve(raw);
-  // If path doesn't end with .claude, check if .claude subdir exists
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new Error(`Claude home path is empty (${source})`);
+  }
+  if (trimmed.includes("\u0000")) {
+    throw new Error(`Claude home path contains invalid characters (${source})`);
+  }
+  if (!path.isAbsolute(trimmed)) {
+    throw new Error(`Claude home path must be absolute (${source}): ${trimmed}`);
+  }
+
+  let resolved = path.resolve(trimmed);
+
+  // If the caller passed a parent dir rather than `<something>/.claude`,
+  // auto-append `.claude` only if it actually exists as a subdirectory.
+  // Use statSync (not existsSync) so the check follows symlinks once, and
+  // immediately realpath the final target before any validation so we
+  // never return an unrealpathed path the caller can race against.
   if (!resolved.endsWith(".claude")) {
     const withClaude = path.join(resolved, ".claude");
     try {
-      if (existsSync(withClaude)) {
+      const info = statSync(withClaude);
+      if (info.isDirectory()) {
         resolved = withClaude;
       }
-    } catch {}
+    } catch {
+      // No `.claude` subdir — keep the original path.
+    }
   }
-  validateOverridePath(resolved, source);
-  return resolved;
+
+  // Canonicalize: if the path exists, use its realpath so symlinks cannot
+  // escape the allow-list after validation. If it doesn't exist yet (first
+  // run), fall back to the lexical form.
+  let canonical = resolved;
+  try {
+    canonical = realpathSync(resolved);
+  } catch {
+    // Path does not exist yet.
+  }
+
+  validateAgainstBases(canonical, source);
+  return canonical;
 }
 
 export function getClaudeHome(override?: string | null): string {
@@ -88,8 +123,9 @@ export function getClaudeHome(override?: string | null): string {
     return resolveAndValidate(override, "override");
   }
 
-  if (process.env.CLAUDE_HOME) {
-    return resolveAndValidate(process.env.CLAUDE_HOME, "env");
+  const envValue = process.env.CLAUDE_HOME;
+  if (envValue && envValue.trim()) {
+    return resolveAndValidate(envValue, "env");
   }
 
   const home = process.env.HOME || process.env.USERPROFILE;

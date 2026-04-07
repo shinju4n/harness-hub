@@ -4,7 +4,8 @@ import {
   readClaudeMdScope,
   writeClaudeMdScope,
 } from "../claude-md-scopes";
-import { writeFile, mkdir, rm, readFile } from "fs/promises";
+import { writeFile, mkdir, rm, readFile, symlink } from "fs/promises";
+import { realpathSync } from "fs";
 import path from "path";
 import os from "os";
 
@@ -12,6 +13,12 @@ describe("claude-md-scopes", () => {
   let tmpRoot: string;
   let claudeHome: string;
   let projectRoot: string;
+  /**
+   * On macOS `os.tmpdir()` → `/var/folders/...` which realpaths to
+   * `/private/var/folders/...`. The lib canonicalizes projectRoot via
+   * realpath, so test expectations also canonicalize to match.
+   */
+  let projectRootCanonical: string;
 
   beforeEach(async () => {
     tmpRoot = path.join(os.tmpdir(), `harness-cmscopes-${Date.now()}-${Math.random()}`);
@@ -19,6 +26,7 @@ describe("claude-md-scopes", () => {
     projectRoot = path.join(tmpRoot, "my-project");
     await mkdir(claudeHome, { recursive: true });
     await mkdir(projectRoot, { recursive: true });
+    projectRootCanonical = realpathSync(projectRoot);
   });
 
   afterEach(async () => {
@@ -57,22 +65,22 @@ describe("claude-md-scopes", () => {
       expect(local.writable).toBe(false);
     });
 
-    it("project scope resolves to projectRoot/CLAUDE.md when projectRoot is supplied", async () => {
+    it("project scope resolves to canonical projectRoot/CLAUDE.md when projectRoot is supplied", async () => {
       await writeFile(path.join(projectRoot, "CLAUDE.md"), "project content");
       const scopes = await listClaudeMdScopes(claudeHome, { projectRoot });
       const proj = scopes.find((s) => s.id === "project")!;
       expect(proj.available).toBe(true);
       expect(proj.exists).toBe(true);
       expect(proj.writable).toBe(true);
-      expect(proj.filePath).toBe(path.join(projectRoot, "CLAUDE.md"));
+      expect(proj.filePath).toBe(path.join(projectRootCanonical, "CLAUDE.md"));
     });
 
-    it("local scope resolves to projectRoot/CLAUDE.local.md when projectRoot is supplied", async () => {
+    it("local scope resolves to canonical projectRoot/CLAUDE.local.md when projectRoot is supplied", async () => {
       await writeFile(path.join(projectRoot, "CLAUDE.local.md"), "local content");
       const scopes = await listClaudeMdScopes(claudeHome, { projectRoot });
       const local = scopes.find((s) => s.id === "local")!;
       expect(local.available).toBe(true);
-      expect(local.filePath).toBe(path.join(projectRoot, "CLAUDE.local.md"));
+      expect(local.filePath).toBe(path.join(projectRootCanonical, "CLAUDE.local.md"));
     });
 
     it("rejects a projectRoot that does not exist or is not a directory", async () => {
@@ -153,6 +161,36 @@ describe("claude-md-scopes", () => {
       await writeClaudeMdScope(claudeHome, "local", "l", { projectRoot });
       const raw = await readFile(path.join(projectRoot, "CLAUDE.local.md"), "utf-8");
       expect(raw).toBe("l");
+    });
+
+    it("writes to a project located outside $HOME (e.g. external volume)", async () => {
+      // Regression: a prior verifyWriteTargetIsSafe implementation tied writes
+      // to the homedir allow-list, rejecting legitimate projects on external
+      // drives. Each scope should instead stay within its own validated root.
+      const externalRoot = path.join(os.tmpdir(), `harness-external-${Date.now()}`);
+      await mkdir(externalRoot, { recursive: true });
+      try {
+        await writeClaudeMdScope(claudeHome, "project", "ok", { projectRoot: externalRoot });
+        const raw = await readFile(path.join(externalRoot, "CLAUDE.md"), "utf-8");
+        expect(raw).toBe("ok");
+      } finally {
+        await rm(externalRoot, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses to write when the target is already a symlink (prevents post-validation swap)", async () => {
+      const decoy = path.join(tmpRoot, "decoy.md");
+      await writeFile(decoy, "original");
+      // Plant a symlink at the spot where CLAUDE.md would be written.
+      await symlink(decoy, path.join(projectRoot, "CLAUDE.md"));
+
+      await expect(
+        writeClaudeMdScope(claudeHome, "project", "hijacked", { projectRoot })
+      ).rejects.toThrow(/symlink/i);
+
+      // Decoy must remain untouched.
+      const raw = await readFile(decoy, "utf-8");
+      expect(raw).toBe("original");
     });
   });
 });

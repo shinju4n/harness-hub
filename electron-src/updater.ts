@@ -15,8 +15,13 @@ export interface UpdaterLike {
   checkForUpdates(): Promise<unknown> | null;
   quitAndInstall?: () => void;
   on(event: string, listener: (...args: unknown[]) => void): this;
-  off?(event: string, listener: (...args: unknown[]) => void): this;
-  removeAllListeners?(event?: string): this;
+  /**
+   * Required so stop() can tear down subscribed listeners deterministically.
+   * Node's EventEmitter has implemented `off` since Node 10, and the real
+   * electron-updater AppUpdater inherits from EventEmitter, so any realistic
+   * adapter satisfies this without effort.
+   */
+  off(event: string, listener: (...args: unknown[]) => void): this;
 }
 
 export type UpdaterEvent =
@@ -98,7 +103,7 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
   const unwireEvents = () => {
     if (!wired) return;
     for (const { event, listener } of registeredListeners) {
-      updater.off?.(event, listener);
+      updater.off(event, listener);
     }
     registeredListeners.length = 0;
     wired = false;
