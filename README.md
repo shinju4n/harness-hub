@@ -74,15 +74,21 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 Download the latest release from [GitHub Releases](https://github.com/shinju4n/harness-hub/releases).
 
+Once installed, Harness Hub checks GitHub for updates on launch and every hour
+while running. New versions are downloaded in the background and applied the
+next time you quit the app — no manual reinstall needed.
+
 ### macOS
 
-After downloading the `.dmg`, if you see **"Harness Hub is damaged and can't be opened"**, run:
+The macOS build is signed and notarized with an Apple Developer ID, so the
+system will open it without warnings.
 
-```bash
-xattr -cr "/Applications/Harness Hub.app"
-```
+### Windows
 
-This removes the macOS quarantine flag (required for unsigned apps).
+The Windows build is **not code-signed** (to keep costs down), so on first
+install Windows SmartScreen will show a blue **"Windows protected your PC"**
+screen. Click **"More info" → "Run anyway"** to continue. This only happens
+once per machine — subsequent auto-updates apply silently.
 
 ## Building
 

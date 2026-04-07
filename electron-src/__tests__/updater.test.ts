@@ -1,0 +1,213 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { EventEmitter } from "events";
+import { createUpdaterController, type UpdaterLike, type UpdaterEvent } from "../updater";
+
+// Build a fake electron-updater-compatible object backed by EventEmitter.
+function createFakeUpdater(): UpdaterLike & EventEmitter {
+  const emitter = new EventEmitter();
+  const fake = Object.assign(emitter, {
+    autoDownload: false,
+    autoInstallOnAppQuit: false,
+    logger: null as unknown,
+    checkForUpdates: vi.fn().mockResolvedValue(undefined),
+    quitAndInstall: vi.fn(),
+  }) as unknown as UpdaterLike & EventEmitter;
+  return fake;
+}
+
+describe("createUpdaterController", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("does not touch the updater when enabled=false", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: false });
+
+    controller.start();
+
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+    expect(updater.autoDownload).toBe(false);
+  });
+
+  it("configures autoDownload + autoInstallOnAppQuit on start", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+
+    controller.start();
+
+    expect(updater.autoDownload).toBe(true);
+    expect(updater.autoInstallOnAppQuit).toBe(true);
+  });
+
+  it("calls checkForUpdates immediately on start", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+
+    controller.start();
+
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-checks on the configured interval", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      intervalMs: 60_000,
+    });
+
+    controller.start();
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(60_000);
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2);
+
+    vi.advanceTimersByTime(60_000);
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(3);
+  });
+
+  it("stop() clears the interval and further ticks do not fire checkForUpdates", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      intervalMs: 30_000,
+    });
+
+    controller.start();
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+
+    controller.stop();
+    vi.advanceTimersByTime(30_000);
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes checking-for-update into a 'checking' UpdaterEvent", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("checking-for-update");
+
+    expect(events).toContainEqual({ type: "checking" });
+  });
+
+  it("normalizes update-available with version", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("update-available", { version: "0.6.0" });
+
+    expect(events).toContainEqual({ type: "available", version: "0.6.0" });
+  });
+
+  it("normalizes update-not-available", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("update-not-available", {});
+
+    expect(events).toContainEqual({ type: "not-available" });
+  });
+
+  it("normalizes download-progress into percent rounded to integer", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("download-progress", { percent: 42.7 });
+
+    expect(events).toContainEqual({ type: "progress", percent: 43 });
+  });
+
+  it("normalizes update-downloaded with version", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("update-downloaded", { version: "0.6.0" });
+
+    expect(events).toContainEqual({ type: "downloaded", version: "0.6.0" });
+  });
+
+  it("normalizes error events using Error.message", () => {
+    const events: UpdaterEvent[] = [];
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+
+    updater.emit("error", new Error("boom"));
+
+    expect(events).toContainEqual({ type: "error", message: "boom" });
+  });
+
+  it("swallows synchronous errors from checkForUpdates so start() does not throw", () => {
+    const updater = createFakeUpdater();
+    updater.checkForUpdates = vi.fn().mockRejectedValue(new Error("network down"));
+    const events: UpdaterEvent[] = [];
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(() => controller.start()).not.toThrow();
+  });
+
+  it("quitAndInstall() delegates to the updater when available", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+
+    controller.quitAndInstall();
+
+    expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults intervalMs to 1 hour when not specified", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+
+    controller.start();
+    vi.advanceTimersByTime(60 * 60 * 1000);
+
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2);
+  });
+});

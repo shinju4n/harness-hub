@@ -1,11 +1,14 @@
 import { app, BrowserWindow, Menu, dialog } from "electron";
+import { autoUpdater } from "electron-updater";
 import { spawn, fork, ChildProcess } from "child_process";
 import path from "path";
 import { findAvailablePort, waitForServer } from "./server-utils";
+import { createUpdaterController, type UpdaterController, type UpdaterEvent } from "./updater";
 
 let mainWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | null = null;
 let serverPort = 13100;
+let updaterController: UpdaterController | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -104,6 +107,29 @@ function killNextServer(): void {
   }
 }
 
+function handleUpdaterEvent(event: UpdaterEvent): void {
+  switch (event.type) {
+    case "checking":
+      console.log("[updater] checking for updates");
+      break;
+    case "available":
+      console.log(`[updater] update available: v${event.version}`);
+      break;
+    case "not-available":
+      console.log("[updater] already up to date");
+      break;
+    case "progress":
+      console.log(`[updater] downloading ${event.percent}%`);
+      break;
+    case "downloaded":
+      console.log(`[updater] v${event.version} downloaded — will install on quit`);
+      break;
+    case "error":
+      console.error(`[updater] error: ${event.message}`);
+      break;
+  }
+}
+
 if (process.platform === "darwin") {
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
@@ -147,6 +173,14 @@ app.whenReady().then(async () => {
   try {
     await startNextServer();
     createWindow();
+
+    // Only check for updates in packaged builds; dev mode has no stable version.
+    updaterController = createUpdaterController({
+      updater: autoUpdater,
+      enabled: app.isPackaged,
+      onEvent: handleUpdaterEvent,
+    });
+    updaterController.start();
   } catch (err) {
     console.error("Failed to start:", err);
     dialog.showErrorBox(
@@ -172,5 +206,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  updaterController?.stop();
   killNextServer();
 });
