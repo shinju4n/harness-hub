@@ -44,6 +44,26 @@ function formatBytes(n: number): string {
   return `${(n / 1024).toFixed(1)} KB`;
 }
 
+/**
+ * Pull every reference to a script in ~/.claude/hooks/ out of an arbitrary
+ * shell command. Matches whether the path is `~/.claude/hooks/foo.mjs`,
+ * `$HOME/.claude/hooks/foo.mjs`, or `/Users/.../.claude/hooks/foo.mjs`.
+ * Returns just the basenames (deduped, in order of first appearance).
+ */
+function extractHookFileRefs(command: string): string[] {
+  const re = /\.claude\/hooks\/([A-Za-z0-9._-]+\.(?:mjs|cjs|js|ts|py|sh))/g;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const match of command.matchAll(re)) {
+    const name = match[1];
+    if (!seen.has(name)) {
+      seen.add(name);
+      out.push(name);
+    }
+  }
+  return out;
+}
+
 export default function HooksPage() {
   const [tab, setTab] = useState<Tab>("bindings");
 
@@ -133,6 +153,11 @@ export default function HooksPage() {
   };
 
   // ─── Scripts handlers ───────────────────────────────────────────────────
+
+  const jumpToScript = (name: string) => {
+    setTab("scripts");
+    viewScript(name);
+  };
 
   const viewScript = async (name: string) => {
     setEditing(false);
@@ -339,16 +364,41 @@ export default function HooksPage() {
                               {entry.matcher ?? "*"}
                             </span>
                           </div>
-                          {entry.hooks.map((hook, j) => (
-                            <div key={j} className="mt-2 text-sm">
-                              <code className="font-mono text-gray-700 dark:text-gray-300 text-xs sm:text-sm break-all">{hook.command}</code>
-                              {hook.timeout && (
-                                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
-                                  {hook.timeout >= 1000 ? `${hook.timeout / 1000}s` : `${hook.timeout}ms`}
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                          {entry.hooks.map((hook, j) => {
+                            const refs = extractHookFileRefs(hook.command);
+                            // Only treat refs as clickable if the file actually
+                            // exists in ~/.claude/hooks/, otherwise the link
+                            // would just produce a 404.
+                            const knownRefs = refs.filter((name) =>
+                              files.some((f) => f.name === name)
+                            );
+                            return (
+                              <div key={j} className="mt-2 text-sm">
+                                <code className="font-mono text-gray-700 dark:text-gray-300 text-xs sm:text-sm break-all">{hook.command}</code>
+                                {hook.timeout && (
+                                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">
+                                    {hook.timeout >= 1000 ? `${hook.timeout / 1000}s` : `${hook.timeout}ms`}
+                                  </span>
+                                )}
+                                {knownRefs.length > 0 && (
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">→</span>
+                                    {knownRefs.map((name) => (
+                                      <button
+                                        key={name}
+                                        onClick={() => jumpToScript(name)}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+                                        title={`Open ${name} in Scripts tab`}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                                        {name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                         <button
                           onClick={() => deleteHook(event, i)}
