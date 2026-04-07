@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const claudeHome = getClaudeHomeFromRequest(request);
   const filePath = path.join(claudeHome, "keybindings.json");
-  const { keybindings, mtime } = await request.json();
+  const { keybindings } = await request.json();
 
   const current = await readJsonFile(filePath);
   if (current.mtime) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readdir, stat } from "fs/promises";
+import { readdir } from "fs/promises";
 import path, { resolve } from "path";
 import os from "os";
 

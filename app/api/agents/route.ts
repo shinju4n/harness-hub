@@ -3,7 +3,6 @@ import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readMarkdownFile, readJsonFile } from "@/lib/file-ops";
 import { readdir, writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
-import matter from "gray-matter";
 
 interface AgentDefinition {
   name: string;

@@ -16,8 +16,9 @@ interface BrowseResult {
 }
 
 export function FolderPicker({ onSelect, onClose }: FolderPickerProps) {
+  // Start in loading state so the initial effect doesn't have to call setLoading synchronously.
   const [data, setData] = useState<BrowseResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const browse = async (dir?: string) => {
     setLoading(true);
@@ -27,7 +28,17 @@ export function FolderPicker({ onSelect, onClose }: FolderPickerProps) {
     setLoading(false);
   };
 
-  useEffect(() => { browse(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/browse-folder");
+      if (!cancelled && res.ok) setData(await res.json());
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!data) return null;
 

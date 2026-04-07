@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import type { Profile } from "@/stores/app-settings-store";
-import { FolderPicker } from "@/components/folder-picker";
 import packageJson from "@/package.json";
 
 const INTERVAL_OPTIONS = [
@@ -33,7 +32,6 @@ export default function AppSettingsPage() {
   const [addingProfile, setAddingProfile] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [newProfilePath, setNewProfilePath] = useState("");
-  const [browsing, setBrowsing] = useState<"edit" | "add" | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const checkForUpdates = async () => {
@@ -100,7 +98,7 @@ export default function AppSettingsPage() {
               ) : (
                 <p className="text-sm text-green-600 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5"/></svg>
-                  You're up to date (v{updateInfo.currentVersion})
+                  You&apos;re up to date (v{updateInfo.currentVersion})
                 </p>
               )}
             </div>

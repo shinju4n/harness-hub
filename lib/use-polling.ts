@@ -7,7 +7,11 @@ export function usePolling(fetchFn: () => void, deps: unknown[] = []) {
   const { pollingEnabled, pollingInterval } = useAppSettingsStore();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fetchRef = useRef(fetchFn);
-  fetchRef.current = fetchFn;
+
+  // Keep ref in sync with latest fetchFn without touching it during render.
+  useEffect(() => {
+    fetchRef.current = fetchFn;
+  }, [fetchFn]);
 
   const refresh = useCallback(() => {
     fetchRef.current();
@@ -16,6 +20,7 @@ export function usePolling(fetchFn: () => void, deps: unknown[] = []) {
   // Initial fetch
   useEffect(() => {
     fetchRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   // Polling

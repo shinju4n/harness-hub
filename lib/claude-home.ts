@@ -1,4 +1,5 @@
 import { access } from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 
 export function getClaudeHome(override?: string | null): string {
@@ -11,8 +12,7 @@ export function getClaudeHome(override?: string | null): string {
     if (!resolved.endsWith(".claude")) {
       const withClaude = path.join(resolved, ".claude");
       try {
-        const fs = require("fs");
-        if (fs.existsSync(withClaude)) {
+        if (existsSync(withClaude)) {
           resolved = withClaude;
         }
       } catch {}

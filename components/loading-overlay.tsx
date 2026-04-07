@@ -9,6 +9,8 @@ interface LoadingOverlayProps {
 
 export function LoadingOverlay({ message = "Switching profile..." }: LoadingOverlayProps) {
   const [mounted, setMounted] = useState(false);
+  // Hydration guard: portal can only render after mount on the client.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMounted(true); }, []);
 
   if (!mounted) return null;
