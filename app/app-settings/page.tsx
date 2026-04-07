@@ -355,12 +355,6 @@ export default function AppSettingsPage() {
               <span>Data source</span>
               <span className="font-mono text-gray-700 dark:text-gray-300">~/.claude/</span>
             </div>
-            <div className="flex justify-between">
-              <span>Repository</span>
-              <a href="https://github.com/shinju4n/harness-hub" target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:underline">
-                shinju4n/harness-hub
-              </a>
-            </div>
           </div>
         </div>
       </div>
