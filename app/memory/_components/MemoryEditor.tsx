@@ -59,7 +59,7 @@ export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
 
         <div className="space-y-2.5">
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Name</label>
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-300 mb-1">Name</label>
             <input
               type="text"
               value={name}
@@ -69,7 +69,7 @@ export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-300 mb-1">Type</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as MemoryFile["type"])}
@@ -83,7 +83,7 @@ export function MemoryEditor({ memory, onSave, onDelete }: MemoryEditorProps) {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">Description</label>
+            <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-300 mb-1">Description</label>
             <input
               type="text"
               value={description}

@@ -43,7 +43,7 @@ export function CreateMemoryModal({ onSubmit, onClose }: CreateMemoryModalProps)
           className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
         />
         {fileName && (
-          <p className="mt-1 text-[10px] font-mono text-gray-400 dark:text-gray-500 px-1">
+          <p className="mt-1 text-[10px] font-mono text-gray-400 dark:text-gray-400 px-1">
             {fileName}
           </p>
         )}
@@ -89,7 +89,7 @@ export function CreateMemoryModal({ onSubmit, onClose }: CreateMemoryModalProps)
         </button>
         <button
           onClick={onClose}
-          className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="px-3 py-1 text-xs text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
         >
           Cancel
         </button>

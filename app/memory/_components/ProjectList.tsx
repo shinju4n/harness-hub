@@ -16,7 +16,7 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
 
   if (projects.length === 0) {
     return (
-      <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+      <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-400">
         No projects found in ~/.claude/projects/
       </p>
     );
@@ -24,7 +24,7 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
 
   return (
     <div>
-      <label className="flex items-center gap-2 px-3 py-2 text-[11px] text-gray-400 dark:text-gray-500 cursor-pointer select-none">
+      <label className="flex items-center gap-2 px-3 py-2 text-[11px] text-gray-500 dark:text-gray-300 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={showEmpty}
@@ -46,7 +46,7 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
               className={`w-full text-left px-3 py-2.5 rounded-lg text-[13px] transition-all ${
                 selectedId === p.id
                   ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -58,18 +58,18 @@ export function ProjectList({ projects, selectedId, onSelect }: ProjectListProps
                   }`}
                 />
                 <span className="truncate">{shortName}</span>
-                <span className="ml-auto shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
+                <span className="ml-auto shrink-0 text-[11px] text-gray-400 dark:text-gray-400">
                   {p.memoryCount}
                 </span>
               </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 ml-4 truncate font-mono" title={p.id}>
+              <p className="text-[10px] text-gray-400 dark:text-gray-400 mt-0.5 ml-4 truncate font-mono" title={p.id}>
                 {p.id}
               </p>
             </button>
           );
         })}
         {filtered.length === 0 && (
-          <p className="px-3 py-4 text-center text-[12px] text-gray-400 dark:text-gray-500">
+          <p className="px-3 py-4 text-center text-[12px] text-gray-400 dark:text-gray-400">
             No projects with memories
           </p>
         )}

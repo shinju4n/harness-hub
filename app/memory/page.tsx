@@ -163,7 +163,7 @@ export default function MemoryPage() {
       <div className="mb-4 pl-10 lg:pl-1 pr-1 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Memory</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-300">
             {projects.length} projects, {totalMemories} memories
           </p>
         </div>
@@ -195,7 +195,7 @@ export default function MemoryPage() {
           <div>
             <button
               onClick={() => { setSelectedProject(null); setMemories([]); setCreating(false); }}
-              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200"
             >
               {backArrow}
               Back to projects
@@ -214,7 +214,7 @@ export default function MemoryPage() {
           <div>
             <button
               onClick={() => setSelectedMemory(null)}
-              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200"
             >
               {backArrow}
               Back to memories
@@ -256,7 +256,7 @@ export default function MemoryPage() {
                   )}
                 </>
               ) : (
-                <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-400">
                   Select a project
                 </p>
               )}
@@ -271,7 +271,7 @@ export default function MemoryPage() {
               {selectedMemory ? (
                 <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-400 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                   {selectedProject ? "Select a memory to view" : "Select a project to begin"}
                 </div>
               )}

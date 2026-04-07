@@ -19,7 +19,7 @@ const typeBadge: Record<string, string> = {
 export function MemoryList({ memories, selectedFile, onSelect }: MemoryListProps) {
   if (memories.length === 0) {
     return (
-      <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+      <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-400">
         No memory files
       </p>
     );
@@ -34,7 +34,7 @@ export function MemoryList({ memories, selectedFile, onSelect }: MemoryListProps
           className={`w-full text-left px-3 py-2.5 rounded-lg text-[13px] transition-all ${
             selectedFile === m.fileName
               ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
-              : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+              : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -48,7 +48,7 @@ export function MemoryList({ memories, selectedFile, onSelect }: MemoryListProps
             <span className="truncate">{m.name ?? m.fileName}</span>
           </div>
           {m.description && (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1 pl-0.5">
+            <p className="text-[11px] text-gray-400 dark:text-gray-400 mt-0.5 line-clamp-1 pl-0.5">
               {m.description}
             </p>
           )}
