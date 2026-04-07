@@ -99,6 +99,14 @@ describe("claude-md-scopes", () => {
       expect(proj.unavailableReason).toMatch(/absolute/i);
     });
 
+    it("rejects a projectRoot equal to the filesystem root (footgun guard)", async () => {
+      const fsRoot = path.parse(os.homedir()).root; // "/" on posix, "C:\\" on win32
+      const scopes = await listClaudeMdScopes(claudeHome, { projectRoot: fsRoot });
+      const proj = scopes.find((s) => s.id === "project")!;
+      expect(proj.available).toBe(false);
+      expect(proj.unavailableReason).toMatch(/filesystem root/i);
+    });
+
     it("org scope is always read-only and available", async () => {
       const scopes = await listClaudeMdScopes(claudeHome);
       const org = scopes.find((s) => s.id === "org")!;
@@ -191,6 +199,34 @@ describe("claude-md-scopes", () => {
       // Decoy must remain untouched.
       const raw = await readFile(decoy, "utf-8");
       expect(raw).toBe("original");
+    });
+
+    it("refuses a relative-target symlink at the write path", async () => {
+      const decoy = path.join(tmpRoot, "relative-decoy.md");
+      await writeFile(decoy, "relative-original");
+      // Relative symlink: "../relative-decoy.md" from inside projectRoot.
+      await symlink("../relative-decoy.md", path.join(projectRoot, "CLAUDE.local.md"));
+
+      await expect(
+        writeClaudeMdScope(claudeHome, "local", "hijacked", { projectRoot })
+      ).rejects.toThrow(/symlink/i);
+
+      const raw = await readFile(decoy, "utf-8");
+      expect(raw).toBe("relative-original");
+    });
+
+    it("projectRoot itself can be a symlink; realpath is followed end-to-end", async () => {
+      // projectRoot -> real-project
+      const realProject = path.join(tmpRoot, "real-project");
+      await mkdir(realProject, { recursive: true });
+      const linkRoot = path.join(tmpRoot, "link-project");
+      await symlink(realProject, linkRoot);
+
+      await writeClaudeMdScope(claudeHome, "project", "via-link", { projectRoot: linkRoot });
+
+      // The file must land inside the realpath'd directory, not the symlinked one.
+      const raw = await readFile(path.join(realProject, "CLAUDE.md"), "utf-8");
+      expect(raw).toBe("via-link");
     });
   });
 });

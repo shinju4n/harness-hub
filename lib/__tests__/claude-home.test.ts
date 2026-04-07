@@ -49,8 +49,11 @@ describe("getClaudeHome", () => {
     });
 
     it("rejects an override outside the user's home (path traversal defense)", () => {
-      expect(() => getClaudeHome("/etc/passwd")).toThrow(/outside/i);
-      expect(() => getClaudeHome("/var/root/.claude")).toThrow(/outside/i);
+      // Use paths whose lookup cleanly ENOENTs so we exercise the lexical
+      // allow-list check instead of hitting EACCES (which now rightly
+      // bubbles up after the catch-narrowing fix).
+      expect(() => getClaudeHome("/nonexistent/.claude")).toThrow(/outside/i);
+      expect(() => getClaudeHome("/opt/no-such-dir/.claude")).toThrow(/outside/i);
     });
 
     it("rejects an override pointing at a system directory via .claude suffix", () => {

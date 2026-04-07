@@ -20,6 +20,16 @@ import os from "os";
  * validation and write can still escape. Callers writing to these paths
  * should realpath the final target at write time (see claude-md-scopes).
  */
+/**
+ * Swallow only "path does not exist" style errors from realpath; any other
+ * failure (EACCES, ELOOP, ENAMETOOLONG, ...) is a genuine signal that the
+ * operator needs to see, not silently discard.
+ */
+function isMissingPathError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException | null)?.code;
+  return code === "ENOENT" || code === "ENOTDIR";
+}
+
 function collectAllowedBases(): string[] {
   const bases: string[] = [];
 
@@ -28,15 +38,15 @@ function collectAllowedBases(): string[] {
   bases.push(os.homedir());
   try {
     bases.push(realpathSync(os.homedir()));
-  } catch {
-    // ignore
+  } catch (err) {
+    if (!isMissingPathError(err)) throw err;
   }
 
   bases.push(os.tmpdir());
   try {
     bases.push(realpathSync(os.tmpdir()));
-  } catch {
-    // ignore
+  } catch (err) {
+    if (!isMissingPathError(err)) throw err;
   }
 
   const allowList = process.env.HARNESS_HUB_ALLOWED_HOMES;
@@ -47,8 +57,8 @@ function collectAllowedBases(): string[] {
       bases.push(path.resolve(trimmed));
       try {
         bases.push(realpathSync(trimmed));
-      } catch {
-        // ignore
+      } catch (err) {
+        if (!isMissingPathError(err)) throw err;
       }
     }
   }
@@ -99,19 +109,22 @@ function resolveAndValidate(raw: string, source: "override" | "env"): string {
       if (info.isDirectory()) {
         resolved = withClaude;
       }
-    } catch {
-      // No `.claude` subdir — keep the original path.
+    } catch (err) {
+      // Missing `.claude` subdir is fine — keep the original path. Any
+      // other error (EACCES, ELOOP, ENAMETOOLONG) surfaces to the caller.
+      if (!isMissingPathError(err)) throw err;
     }
   }
 
   // Canonicalize: if the path exists, use its realpath so symlinks cannot
   // escape the allow-list after validation. If it doesn't exist yet (first
-  // run), fall back to the lexical form.
+  // run), fall back to the lexical form. Any non-missing error (e.g. ELOOP
+  // from a symlink cycle) is surfaced so we cannot bypass canonicalization.
   let canonical = resolved;
   try {
     canonical = realpathSync(resolved);
-  } catch {
-    // Path does not exist yet.
+  } catch (err) {
+    if (!isMissingPathError(err)) throw err;
   }
 
   validateAgainstBases(canonical, source);

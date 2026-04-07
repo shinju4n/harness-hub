@@ -122,6 +122,15 @@ async function validateProjectRoot(
   } catch {
     return { ok: false, reason: "Project root not found" };
   }
+  // Footgun guard: refuse the filesystem root itself (`/` on posix, `C:\` on
+  // win32). A user who accidentally (or through a UI bug) sets projectRoot
+  // to `/` would otherwise write `/CLAUDE.md`, which is never what anyone
+  // intended. The invariant also applies to the canonical form so symlinks
+  // to the root are caught.
+  const fsRoot = path.parse(canonical).root;
+  if (canonical === fsRoot) {
+    return { ok: false, reason: "Project root cannot be the filesystem root" };
+  }
   return { ok: true, absolute: canonical };
 }
 
