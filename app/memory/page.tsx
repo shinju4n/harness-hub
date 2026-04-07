@@ -158,9 +158,9 @@ export default function MemoryPage() {
   ) : null;
 
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8">
+    <div>
       {/* Header */}
-      <div className="mb-6 pl-10 lg:pl-4 pr-4 flex items-start justify-between">
+      <div className="mb-4 pl-10 lg:pl-1 pr-1 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Memory</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -172,7 +172,7 @@ export default function MemoryPage() {
 
       {/* Warning banner */}
       {warning && (
-        <div className="mx-4 mb-4 px-4 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-sm">
+        <div className="mb-4 px-4 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-sm">
           {warning}
           <button
             onClick={() => setWarning(null)}
@@ -184,7 +184,7 @@ export default function MemoryPage() {
       )}
 
       {/* Mobile layout */}
-      <div className="lg:hidden px-4">
+      <div className="lg:hidden">
         {mobileStep === 1 && (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
             <ProjectList projects={projects} selectedId={selectedProject?.id ?? null} onSelect={handleSelectProject} />
@@ -225,7 +225,7 @@ export default function MemoryPage() {
       </div>
 
       {/* Desktop layout — resizable panels */}
-      <div className="hidden lg:block h-[calc(100vh-10rem)] px-2">
+      <div className="hidden lg:block h-[calc(100vh-8rem)]">
         <Group id="memory-panels" orientation="horizontal" defaultLayout={{ projects: 25, memories: 20, editor: 55 }}>
           {/* Project list panel */}
           <Panel id="projects" minSize="15%" maxSize="40%">
