@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Panel, Group, Separator } from "react-resizable-panels";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
@@ -9,6 +10,14 @@ import { ProjectList } from "./_components/ProjectList";
 import { MemoryList } from "./_components/MemoryList";
 import { MemoryEditor } from "./_components/MemoryEditor";
 import { CreateMemoryModal } from "./_components/CreateMemoryModal";
+
+function ResizeHandle() {
+  return (
+    <Separator className="group w-2 flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors rounded">
+      <div className="w-0.5 h-8 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-amber-400 dark:group-hover:bg-amber-500 transition-colors" />
+    </Separator>
+  );
+}
 
 export default function MemoryPage() {
   const [projects, setProjects] = useState<MemoryProject[]>([]);
@@ -79,7 +88,6 @@ export default function MemoryPage() {
       });
       if (res.ok) {
         await fetchMemories(selectedProject.id);
-        // Re-fetch the selected memory to get updated mtime
         const refreshRes = await apiFetch(
           `/api/memory?project=${encodeURIComponent(selectedProject.id)}&file=${encodeURIComponent(selectedMemory.fileName)}`
         );
@@ -132,7 +140,6 @@ export default function MemoryPage() {
 
   const totalMemories = projects.reduce((acc, p) => acc + p.memoryCount, 0);
 
-  // Mobile step navigation
   const mobileStep = selectedMemory ? 3 : selectedProject ? 2 : 1;
 
   const backArrow = (
@@ -151,9 +158,9 @@ export default function MemoryPage() {
   ) : null;
 
   return (
-    <div>
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8">
       {/* Header */}
-      <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
+      <div className="mb-6 pl-10 lg:pl-4 pr-4 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Memory</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -165,7 +172,7 @@ export default function MemoryPage() {
 
       {/* Warning banner */}
       {warning && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-sm">
+        <div className="mx-4 mb-4 px-4 py-2.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-sm">
           {warning}
           <button
             onClick={() => setWarning(null)}
@@ -177,7 +184,7 @@ export default function MemoryPage() {
       )}
 
       {/* Mobile layout */}
-      <div className="lg:hidden">
+      <div className="lg:hidden px-4">
         {mobileStep === 1 && (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
             <ProjectList projects={projects} selectedId={selectedProject?.id ?? null} onSelect={handleSelectProject} />
@@ -217,48 +224,60 @@ export default function MemoryPage() {
         )}
       </div>
 
-      {/* Desktop layout */}
-      <div className="hidden lg:flex gap-6">
-        {/* Project list */}
-        <div className="w-80 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          <ProjectList
-            projects={projects}
-            selectedId={selectedProject?.id ?? null}
-            onSelect={handleSelectProject}
-          />
-        </div>
-
-        {/* Memory list */}
-        <div className="w-56 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          {selectedProject ? (
-            <>
-              <MemoryList
-                memories={memories}
-                selectedFile={selectedMemory?.fileName ?? null}
-                onSelect={handleSelectMemory}
+      {/* Desktop layout — resizable panels */}
+      <div className="hidden lg:block h-[calc(100vh-10rem)] px-2">
+        <Group id="memory-panels" orientation="horizontal">
+          {/* Project list panel */}
+          <Panel defaultSize={25} minSize={15} maxSize={40}>
+            <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
+              <ProjectList
+                projects={projects}
+                selectedId={selectedProject?.id ?? null}
+                onSelect={handleSelectProject}
               />
-              {newMemoryButton}
-              {creating && (
-                <CreateMemoryModal onSubmit={handleCreate} onClose={() => setCreating(false)} />
-              )}
-            </>
-          ) : (
-            <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-              Select a project
-            </p>
-          )}
-        </div>
-
-        {/* Editor */}
-        <div className="flex-1 min-w-0">
-          {selectedMemory ? (
-            <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
-          ) : (
-            <div className="text-gray-400 dark:text-gray-500 text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-              {selectedProject ? "Select a memory to view" : "Select a project to begin"}
             </div>
-          )}
-        </div>
+          </Panel>
+
+          <ResizeHandle />
+
+          {/* Memory list panel */}
+          <Panel defaultSize={20} minSize={12} maxSize={35}>
+            <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
+              {selectedProject ? (
+                <>
+                  <MemoryList
+                    memories={memories}
+                    selectedFile={selectedMemory?.fileName ?? null}
+                    onSelect={handleSelectMemory}
+                  />
+                  {newMemoryButton}
+                  {creating && (
+                    <CreateMemoryModal onSubmit={handleCreate} onClose={() => setCreating(false)} />
+                  )}
+                </>
+              ) : (
+                <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                  Select a project
+                </p>
+              )}
+            </div>
+          </Panel>
+
+          <ResizeHandle />
+
+          {/* Editor panel */}
+          <Panel defaultSize={55} minSize={30}>
+            <div className="h-full overflow-y-auto">
+              {selectedMemory ? (
+                <MemoryEditor memory={selectedMemory} onSave={handleSave} onDelete={handleDelete} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                  {selectedProject ? "Select a memory to view" : "Select a project to begin"}
+                </div>
+              )}
+            </div>
+          </Panel>
+        </Group>
       </div>
     </div>
   );
