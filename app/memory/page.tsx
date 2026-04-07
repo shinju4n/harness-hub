@@ -180,7 +180,7 @@ export default function MemoryPage() {
       <div className="lg:hidden">
         {mobileStep === 1 && (
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
-            <ProjectList projects={projects} selectedId={null} onSelect={handleSelectProject} />
+            <ProjectList projects={projects} selectedId={selectedProject?.id ?? null} onSelect={handleSelectProject} />
           </div>
         )}
 
