@@ -117,7 +117,7 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave }: Markdo
       ) : (
         <div className="p-5 sm:p-6 lg:p-8 overflow-x-auto">
           {mode === "preview" ? (
-            <article className="prose prose-gray max-w-none break-words prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h1:border-b prose-h1:border-gray-200 prose-h1:pb-3 prose-h1:mb-4 prose-h2:text-xl prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-2 prose-h2:mt-8 prose-h3:text-lg prose-h3:mt-6 prose-p:text-[15px] prose-p:leading-7 prose-li:text-[15px] prose-li:leading-7 prose-pre:text-[13px] prose-pre:leading-6 prose-code:text-[13px] prose-img:rounded-lg prose-table:text-sm prose-td:py-2 prose-th:py-2 prose-strong:text-gray-900 prose-a:text-amber-700 prose-a:no-underline hover:prose-a:underline">
+            <article className="prose prose-gray dark:prose-invert max-w-none break-words prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-2xl prose-h1:border-b prose-h1:border-gray-200 dark:prose-h1:border-gray-700 prose-h1:pb-3 prose-h1:mb-4 prose-h2:text-xl prose-h2:border-b prose-h2:border-gray-100 dark:prose-h2:border-gray-700 prose-h2:pb-2 prose-h2:mt-8 prose-h3:text-lg prose-h3:mt-6 prose-p:text-[15px] prose-p:leading-7 prose-li:text-[15px] prose-li:leading-7 prose-pre:text-[13px] prose-pre:leading-6 prose-code:text-[13px] prose-img:rounded-lg prose-table:text-sm prose-td:py-2 prose-th:py-2 prose-strong:text-gray-900 dark:prose-strong:text-gray-100 prose-a:text-amber-700 dark:prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -142,34 +142,34 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave }: Markdo
                     );
                   },
                   table: ({ children, ...props }) => (
-                    <div className="not-prose my-4 overflow-x-auto rounded-lg border border-gray-200">
+                    <div className="not-prose my-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                       <table className="min-w-full text-sm" {...props}>
                         {children}
                       </table>
                     </div>
                   ),
                   thead: ({ children, ...props }) => (
-                    <thead className="bg-gray-50 border-b border-gray-200" {...props}>
+                    <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" {...props}>
                       {children}
                     </thead>
                   ),
                   th: ({ children, ...props }) => (
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" {...props}>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider" {...props}>
                       {children}
                     </th>
                   ),
                   td: ({ children, ...props }) => (
-                    <td className="px-3 py-2 text-gray-700 border-t border-gray-100" {...props}>
+                    <td className="px-3 py-2 text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700" {...props}>
                       {children}
                     </td>
                   ),
                   blockquote: ({ children, ...props }) => (
-                    <blockquote className="not-prose my-4 border-l-4 border-amber-400 bg-amber-50/50 rounded-r-lg px-4 py-3 text-[15px] text-gray-700 leading-7 [&>p]:m-0" {...props}>
+                    <blockquote className="not-prose my-4 border-l-4 border-amber-400 bg-amber-50/50 dark:bg-amber-950/30 rounded-r-lg px-4 py-3 text-[15px] text-gray-700 dark:text-gray-300 leading-7 [&>p]:m-0" {...props}>
                       {children}
                     </blockquote>
                   ),
                   hr: (props) => (
-                    <hr className="not-prose my-6 border-gray-200" {...props} />
+                    <hr className="not-prose my-6 border-gray-200 dark:border-gray-700" {...props} />
                   ),
                   ul: ({ children, ...props }) => (
                     <ul className="my-3 space-y-1" {...props}>
@@ -182,22 +182,22 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave }: Markdo
                     </ol>
                   ),
                   h1: ({ children, ...props }) => (
-                    <h1 className="text-2xl font-bold text-gray-900 border-b border-gray-200 pb-3 mb-4 mt-0 first:mt-0" {...props}>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 mt-0 first:mt-0" {...props}>
                       {children}
                     </h1>
                   ),
                   h2: ({ children, ...props }) => (
-                    <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-100 pb-2 mb-3 mt-8 first:mt-0" {...props}>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-100 dark:border-gray-700 pb-2 mb-3 mt-8 first:mt-0" {...props}>
                       {children}
                     </h2>
                   ),
                   h3: ({ children, ...props }) => (
-                    <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-2 first:mt-0" {...props}>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-2 first:mt-0" {...props}>
                       {children}
                     </h3>
                   ),
                   a: ({ children, href, ...props }) => (
-                    <a href={href} className="text-amber-700 font-medium hover:underline underline-offset-2" {...props}>
+                    <a href={href} className="text-amber-700 dark:text-amber-400 font-medium hover:underline underline-offset-2" {...props}>
                       {children}
                     </a>
                   ),
@@ -207,7 +207,7 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave }: Markdo
               </ReactMarkdown>
             </article>
           ) : (
-            <pre className="text-xs sm:text-sm font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed break-words">
+            <pre className="text-xs sm:text-sm font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed break-words">
               {content}
             </pre>
           )}
