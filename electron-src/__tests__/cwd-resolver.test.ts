@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import os from "os";
+import fs from "fs";
 import { resolveClaudeHome, resolveTerminalCwd } from "../cwd-resolver";
 
 const HOME = os.homedir();
@@ -33,8 +34,35 @@ describe("resolveClaudeHome", () => {
 
   it("returns path that does not exist but is absolute, not ending in .claude, as-is", () => {
     // The path doesn't contain a .claude subdir, so we return it unchanged —
-    // the caller's cwd fallback later will handle it if it's invalid.
+    // createDefaultPtyFactory's load-bearing existsSync fallback then drops
+    // the shell into the user's home if the final cwd is missing.
     expect(resolveClaudeHome("/nonexistent/path")).toBe("/nonexistent/path");
+  });
+
+  it("rejects NUL bytes and falls back to default", () => {
+    expect(resolveClaudeHome("/Users/me/\0evil")).toBe(DEFAULT_CLAUDE);
+  });
+
+  it("rejects path traversal and falls back to default", () => {
+    expect(resolveClaudeHome("/Users/me/../../etc")).toBe(DEFAULT_CLAUDE);
+    expect(resolveClaudeHome("/Users/me/work/../escape")).toBe(DEFAULT_CLAUDE);
+  });
+
+  describe("with a real .claude subdir on disk", () => {
+    const tmpParent = fs.mkdtempSync(path.join(os.tmpdir(), "cwd-resolver-"));
+    const claudeSubdir = path.join(tmpParent, ".claude");
+
+    beforeAll(() => {
+      fs.mkdirSync(claudeSubdir, { recursive: true });
+    });
+
+    afterAll(() => {
+      fs.rmSync(tmpParent, { recursive: true, force: true });
+    });
+
+    it("appends .claude when parent directory has it as a subdir", () => {
+      expect(resolveClaudeHome(tmpParent)).toBe(claudeSubdir);
+    });
   });
 });
 

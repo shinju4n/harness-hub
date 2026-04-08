@@ -97,6 +97,8 @@ export function createDefaultPtyFactory(): PtyFactory {
 
     // Validate cwd. If it doesn't exist, fall back to home to avoid a
     // posix_spawn ENOENT or a shell that immediately exits with code 1.
+    // Load-bearing: resolveClaudeHome in cwd-resolver.ts does NOT verify the
+    // profile path exists on disk, so stale profiles end up here.
     let cwd = options.cwd;
     if (!cwd || !existsSync(cwd)) {
       console.warn(`[terminal] cwd "${cwd}" missing — falling back to home`);
@@ -110,9 +112,11 @@ export function createDefaultPtyFactory(): PtyFactory {
       if (typeof v === "string") env[k] = v;
     }
     // Ensure the shell has the minimum it needs to start a usable session.
+    // `C.UTF-8` is universally present on glibc; `en_US.UTF-8` may not be
+    // generated on minimal Linux containers and would cause zsh to complain.
     if (!env.TERM) env.TERM = "xterm-256color";
     if (!env.HOME) env.HOME = homedir();
-    if (!env.LANG) env.LANG = "en_US.UTF-8";
+    if (!env.LANG) env.LANG = "C.UTF-8";
 
     // On macOS/Linux, launch as a login shell so .zprofile/.bash_profile are
     // sourced — matches what VS Code's integrated terminal does and ensures
@@ -120,21 +124,12 @@ export function createDefaultPtyFactory(): PtyFactory {
     // that rely on login-time initialization exit with code 1.
     const args = isWin ? [] : ["-l"];
 
-    console.log(
-      `[terminal] spawning ${shell} ${args.join(" ")} in ${cwd} (${options.cols}x${options.rows})`,
-    );
-
-    try {
-      return pty.spawn(shell, args, {
-        name: "xterm-256color",
-        cwd,
-        cols: options.cols,
-        rows: options.rows,
-        env,
-      });
-    } catch (err) {
-      console.error("[terminal] pty.spawn failed:", err);
-      throw err;
-    }
+    return pty.spawn(shell, args, {
+      name: "xterm-256color",
+      cwd,
+      cols: options.cols,
+      rows: options.rows,
+      env,
+    });
   };
 }

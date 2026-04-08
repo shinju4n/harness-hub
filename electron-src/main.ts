@@ -180,19 +180,15 @@ app.whenReady().then(async () => {
     terminalManager = new TerminalManager({
       ptyFactory: createDefaultPtyFactory(),
       onData: (id, data) => {
-        console.log("[main/term] pty data:", id, "len:", data.length);
+        // NEVER log `data` — contains raw keystrokes including secrets.
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("terminal:data", { id, data });
         }
       },
       onExit: (id, code) => {
-        console.log(
-          "[main/term] pty exit:",
-          id,
-          "code:",
-          code,
-          "(1 often means shell startup failure — check .zshrc / .zprofile)",
-        );
+        if (code !== 0) {
+          console.warn(`[terminal] session ${id} exited with code ${code}`);
+        }
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("terminal:exit", { id, code });
         }
@@ -212,39 +208,27 @@ app.whenReady().then(async () => {
       ) => {
         const home = resolveClaudeHome(options.claudeHome);
         const cwd = resolveTerminalCwd(home, options.pathname);
-        console.log(
-          "[main/term] create request: pathname=",
-          options.pathname,
-          "profileHome=",
-          options.claudeHome,
-          "resolvedHome=",
-          home,
-          "cwd=",
-          cwd,
-        );
         try {
           const id = terminalManager!.create({
             cwd,
             cols: options.cols,
             rows: options.rows,
           });
-          console.log("[main/term] create success:", id);
           return { id, cwd };
         } catch (err) {
-          console.error("[main/term] create failed:", err);
+          console.error("[terminal] failed to spawn pty:", (err as Error).message);
           throw err;
         }
       },
     );
+    // NEVER log the `data` field — raw keystrokes including passwords / tokens.
     ipcMain.on("terminal:write", (_e, payload: { id: string; data: string }) => {
-      console.log("[main/term] write:", payload.id, JSON.stringify(payload.data));
       terminalManager?.write(payload.id, payload.data);
     });
     ipcMain.on("terminal:resize", (_e, payload: { id: string; cols: number; rows: number }) => {
       terminalManager?.resize(payload.id, payload.cols, payload.rows);
     });
     ipcMain.on("terminal:kill", (_e, payload: { id: string }) => {
-      console.log("[main/term] kill:", payload.id);
       terminalManager?.kill(payload.id);
     });
 

@@ -57,6 +57,18 @@ Harness Hub 윈도우 안에서 셸을 띄워, GUI로 하네스 상태를 보면
 | `components/layout-shell.tsx` | `Group`으로 dock을 수직 분할 배치 |
 | `types/electron-terminal.d.ts` | `window.electronTerminal` ambient 타입 |
 
+## 구현 노트 — Strict Mode 방어
+
+`components/terminal-dock.tsx`의 `useEffect`는 빈 의존성(`[]`)에 `eslint-disable-next-line react-hooks/exhaustive-deps` 가 붙어 있고, **의도한 동작**이다. 이유:
+
+- React 19 + Next.js 16 개발 모드는 Strict Mode에서 effect를 두 번 실행한다 (setup → cleanup → setup 재실행)
+- 이 때문에 effect가 실행될 때마다 `api.create()`로 PTY가 두 번 요청될 수 있다
+- 첫 번째 PTY는 cleanup에서 `api.kill()`로 종료되지만, 그 kill의 exit 이벤트는 **두 번째 effect의 `onExit` 리스너에 도착**한다 (비동기)
+- 따라서 `onData`/`onExit` 리스너는 **반드시 `id !== activeId` 필터**를 거쳐서 "현재 이 effect가 소유한 PTY"의 이벤트만 처리한다
+- 이 id 필터가 없으면 전 effect의 kill이 현재 effect의 `activeId`를 null로 덮어써서 키 입력이 차단된다 (실제로 개발 중 발생했던 버그)
+
+Pathname이 바뀔 때 PTY를 재생성하지 않는 것도 같은 effect 설계의 일부 — 셸은 "열 때" 한 번 만들어지고 세션 내내 고정.
+
 ## 알려진 제약
 
 - **단일 터미널만 지원** (탭 없음). MVP 범위 결정.

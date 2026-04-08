@@ -80,17 +80,17 @@ export function TerminalDock() {
         activeId = result.id;
         setSessionCwd(result.cwd);
         // Focus xterm AFTER PTY is ready. Delay one tick so the helper
-        // textarea is fully attached to the DOM.
-        setTimeout(() => term.focus(), 0);
+        // textarea is fully attached to the DOM. Guard with `disposed`
+        // so we don't touch a disposed terminal if unmount races the timer.
+        setTimeout(() => {
+          if (disposed) return;
+          term.focus();
+        }, 0);
       })
       .catch((err) => {
         console.error("[term] create failed:", err);
         term.write(`\r\n\x1b[31mFailed to start terminal: ${err.message}\x1b[0m\r\n`);
       });
-
-    // Clicking anywhere in the dock focuses xterm as a safety net.
-    const onContainerClick = () => term.focus();
-    container.addEventListener("click", onContainerClick);
 
     // ResizeObserver so panel drag resizes refit xterm (window.resize does not fire).
     const resizeObserver = new ResizeObserver(() => {
@@ -105,7 +105,6 @@ export function TerminalDock() {
     return () => {
       disposed = true;
       resizeObserver.disconnect();
-      container?.removeEventListener("click", onContainerClick);
       unsubData();
       unsubExit();
       if (activeId) api.kill(activeId);
