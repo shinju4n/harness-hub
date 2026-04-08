@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
+import { EmptyState } from "@/components/empty-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 interface CommandItem { name: string; fileName: string; }
 
@@ -14,6 +17,8 @@ export default function CommandsPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchCommands = () => {
     apiFetch("/api/commands").then((r) => r.json()).then((d) => setCommands(d.items));
@@ -55,11 +60,21 @@ export default function CommandsPage() {
   };
 
   const deleteCommand = async (name: string) => {
-    if (!window.confirm(`Delete command "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete command",
+      message: `"/${name}" will be removed from ~/.claude/commands/. This cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/commands?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
+      pushToast("success", `Command "/${name}" deleted`);
       if (selected?.name === name) setSelected(null);
       fetchCommands();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      pushToast("error", err.error ?? `Failed to delete "/${name}"`);
     }
   };
 
@@ -79,7 +94,8 @@ export default function CommandsPage() {
           </button>
           <button
             onClick={() => deleteCommand(cmd.name)}
-            className="shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+            aria-label={`Delete command /${cmd.name}`}
+            className="shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:text-red-500 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
           >
             Delete
           </button>
@@ -95,14 +111,14 @@ export default function CommandsPage() {
         placeholder="command-name"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
       />
       <textarea
         placeholder="Content (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={3}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 resize-none"
       />
       <div className="flex gap-1.5">
         <button
@@ -139,14 +155,18 @@ export default function CommandsPage() {
       </div>
 
       {commands.length === 0 && !creating ? (
-        <div className="text-gray-400 dark:text-gray-500 text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
-          <p>No commands found</p>
-          <button
-            onClick={() => setCreating(true)}
-            className="mt-4 px-4 py-2 text-sm border border-dashed border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 rounded-lg transition-colors"
-          >
-            + New Command
-          </button>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+          <EmptyState
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+            }
+            title="No slash commands yet"
+            description="Create reusable prompts you can run with /name from inside Claude Code."
+            action={{ label: "Create command", onClick: () => setCreating(true) }}
+          />
         </div>
       ) : (
         <>
@@ -189,6 +209,7 @@ export default function CommandsPage() {
           </div>
         </>
       )}
+      {confirmDialog}
     </div>
   );
 }

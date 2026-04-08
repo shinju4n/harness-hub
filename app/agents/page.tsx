@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
+import { EmptyState } from "@/components/empty-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 type Tab = "definitions" | "teams";
 
@@ -55,6 +58,8 @@ export default function AgentsPage() {
   const [selectedTeam, setSelectedTeam] = useState<TeamAgent | null>(null);
   const [agentContent, setAgentContent] = useState<string | null>(null);
   const [agentRawContent, setAgentRawContent] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchAgents = () => {
     apiFetch("/api/agents?tab=definitions").then((r) => r.json()).then((d) => setAgents(d.agents));
@@ -110,11 +115,21 @@ export default function AgentsPage() {
   };
 
   const deleteAgent = async (name: string) => {
-    if (!window.confirm(`Delete agent "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete agent",
+      message: `"${name}" will be removed from ~/.claude/agents/. This cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/agents?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
+      pushToast("success", `Agent "${name}" deleted`);
       if (selectedAgent?.name === name) { setSelectedAgent(null); setAgentContent(null); }
       fetchAgents();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      pushToast("error", err.error ?? `Failed to delete "${name}"`);
     }
   };
 
@@ -168,6 +183,7 @@ export default function AgentsPage() {
         />
       )}
       {tab === "teams" && <TeamsTab teams={teams} selected={selectedTeam} onSelect={setSelectedTeam} />}
+      {confirmDialog}
     </div>
   );
 }
@@ -200,14 +216,14 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
         placeholder="agent-name"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
       />
       <textarea
         placeholder="System prompt (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={3}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 resize-none"
       />
       <div className="flex gap-1.5">
         <button
@@ -236,7 +252,20 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   const agentList = (
     <div className="space-y-0.5">
       {agents.length === 0 ? (
-        <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">No agent definitions found in ~/.claude/agents/</p>
+        <EmptyState
+          compact
+          icon={
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 8V4H8"/>
+              <rect x="8" y="8" width="8" height="8" rx="2"/>
+              <path d="M2 12h2"/><path d="M20 12h2"/>
+              <path d="M12 2v2"/><path d="M12 20v2"/>
+            </svg>
+          }
+          title="No agents yet"
+          description="Drop a markdown file in ~/.claude/agents/ or create one here to get started."
+          action={{ label: "Create agent", onClick: () => setCreating(true) }}
+        />
       ) : (
         agents.map((a) => (
           <div key={a.name} className="flex items-start gap-1 group">
@@ -260,7 +289,8 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
             </button>
             <button
               onClick={() => onDelete(a.name)}
-              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              aria-label={`Delete agent ${a.name}`}
+              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:text-red-500 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>

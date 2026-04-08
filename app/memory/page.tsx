@@ -3,8 +3,10 @@
 import { useState, useCallback } from "react";
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { RefreshButton } from "@/components/refresh-button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 import type { MemoryProject, MemoryFile } from "@/lib/memory-types";
 import { ProjectList } from "./_components/ProjectList";
 import { MemoryList } from "./_components/MemoryList";
@@ -28,6 +30,8 @@ export default function MemoryPage() {
   const [creating, setCreating] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchProjects = useCallback(() => {
     apiFetch("/api/memory?list=projects")
@@ -111,18 +115,28 @@ export default function MemoryPage() {
   const handleDelete = useCallback(
     async (fileName: string) => {
       if (!selectedProject) return;
-      if (!window.confirm(`Delete "${fileName}"?`)) return;
+      const ok = await confirm({
+        title: "Delete memory",
+        message: `"${fileName}" will be removed from this project. The memory file is gone for good after this.`,
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
       const res = await apiFetch(
         `/api/memory?project=${encodeURIComponent(selectedProject.id)}&file=${encodeURIComponent(fileName)}`,
         { method: "DELETE" }
       );
       if (res.ok) {
+        pushToast("success", `Memory "${fileName}" deleted`);
         setSelectedMemory(null);
         await fetchMemories(selectedProject.id);
         fetchProjects();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        pushToast("error", err.error ?? `Failed to delete "${fileName}"`);
       }
     },
-    [selectedProject, fetchMemories, fetchProjects]
+    [selectedProject, fetchMemories, fetchProjects, confirm, pushToast]
   );
 
   const handleCreate = useCallback(
@@ -295,6 +309,7 @@ export default function MemoryPage() {
           </Panel>
         </Group>
       </div>
+      {confirmDialog}
     </div>
   );
 }

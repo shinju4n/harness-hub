@@ -3,8 +3,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshButton } from "@/components/refresh-button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 interface SessionInfo {
   pid: number;
@@ -66,6 +68,9 @@ export default function SessionsPage() {
   // Hover state for cwd actions
   const [hoveredCwd, setHoveredCwd] = useState<string | null>(null);
 
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
+
   const fetchSessions = () => {
     apiFetch("/api/sessions").then((r) => r.json()).then((d) => setSessions(d.sessions ?? []));
   };
@@ -95,18 +100,24 @@ export default function SessionsPage() {
   }, [sessions, filter]);
 
   const deleteSession = async (fileName: string) => {
-    if (!window.confirm(`Delete session "${fileName}"?\n\nThis only removes the metadata file in ~/.claude/sessions/. The Claude Code process itself is not affected.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Delete session metadata",
+      message:
+        `"${fileName}" will be removed from ~/.claude/sessions/.\n\nThis only deletes the metadata file. The running Claude Code process — if any — is not affected.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/sessions?file=${encodeURIComponent(fileName)}`, {
       method: "DELETE",
     });
     if (res.ok) {
+      pushToast("success", "Session metadata deleted");
       if (expanded === fileName) setExpanded(null);
       fetchSessions();
     } else {
       const err = await res.json().catch(() => ({ error: "delete failed" }));
-      alert(err.error ?? "delete failed");
+      pushToast("error", err.error ?? "Failed to delete session");
     }
   };
 
@@ -143,7 +154,7 @@ export default function SessionsPage() {
       setPreviewData(null);
       fetchSessions();
     } catch {
-      alert("Bulk delete failed");
+      pushToast("error", "Bulk delete failed");
     } finally {
       setDeleting(false);
     }
@@ -389,6 +400,7 @@ export default function SessionsPage() {
           </div>
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }

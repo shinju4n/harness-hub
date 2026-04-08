@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { apiFetch } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 interface HistoryEntry {
   display: string;
@@ -110,6 +112,8 @@ export default function HistoryPage() {
   const [selected, setSelected] = useState<Set<EntryKey>>(new Set());
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -156,8 +160,14 @@ export default function HistoryPage() {
   };
 
   const deleteEntry = async (entry: HistoryEntry) => {
-    const preview = entry.display.length > 60 ? entry.display.slice(0, 60) + "…" : entry.display;
-    if (!window.confirm(`Delete history entry?\n\n${preview}`)) return;
+    const preview = entry.display.length > 80 ? entry.display.slice(0, 80) + "…" : entry.display;
+    const ok = await confirm({
+      title: "Delete history entry",
+      message: preview,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch("/api/history", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -168,10 +178,11 @@ export default function HistoryPage() {
       }),
     });
     if (res.ok) {
+      pushToast("success", "History entry deleted");
       fetchPage(offset, project);
     } else {
       const err = await res.json().catch(() => ({ error: "delete failed" }));
-      alert(err.error ?? "delete failed");
+      pushToast("error", err.error ?? "Failed to delete entry");
     }
   };
 
@@ -248,7 +259,7 @@ export default function HistoryPage() {
         fetchPage(offset, project);
       } else {
         const err = await res.json().catch(() => ({ error: "delete failed" }));
-        alert(err.error ?? "delete failed");
+        pushToast("error", err.error ?? "Bulk delete failed");
       }
     } finally {
       setDeleting(false);
@@ -405,7 +416,9 @@ export default function HistoryPage() {
 
       <div className="mt-4 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <span>
-          {total > 0 ? `${offset + 1}-${currentEnd} of ${total}` : ""}
+          {total > 0
+            ? `Showing ${offset + 1}–${currentEnd} of ${total.toLocaleString()} ${total === 1 ? "entry" : "entries"}`
+            : ""}
         </span>
         <div className="flex gap-2">
           <button
@@ -430,6 +443,7 @@ export default function HistoryPage() {
           </button>
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

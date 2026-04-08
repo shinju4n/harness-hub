@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
+import { ListSkeleton } from "@/components/loading-skeleton";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 interface SkillItem {
   name: string;
@@ -30,6 +33,8 @@ export default function SkillsPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchSkills = () => {
     apiFetch("/api/skills").then((r) => r.json()).then(setSkills);
@@ -80,15 +85,25 @@ export default function SkillsPage() {
   };
 
   const deleteSkill = async (name: string) => {
-    if (!window.confirm(`Delete skill "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete skill",
+      message: `"${name}" will be removed from ~/.claude/skills/. This cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/skills?name=${encodeURIComponent(name)}`, { method: "DELETE" });
     if (res.ok) {
+      pushToast("success", `Skill "${name}" deleted`);
       if (selected?.name === name) setSelected(null);
       fetchSkills();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      pushToast("error", err.error ?? `Failed to delete "${name}"`);
     }
   };
 
-  if (!skills) return <div className="text-gray-400 dark:text-gray-500 pt-12 text-center">Loading...</div>;
+  if (!skills) return <div className="pt-4"><ListSkeleton rows={6} /></div>;
 
   const pluginSkills = skills.items.filter((s) => s.source === "plugin");
   const customSkills = skills.items.filter((s) => s.source === "custom");
@@ -124,14 +139,14 @@ export default function SkillsPage() {
         placeholder="skill-name"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
       />
       <textarea
         placeholder="Content (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={3}
-        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 resize-none"
       />
       <div className="flex gap-1.5">
         <button
@@ -175,7 +190,8 @@ export default function SkillsPage() {
             </button>
             <button
               onClick={() => deleteSkill(s.name)}
-              className="opacity-0 group-hover:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              aria-label={`Delete skill ${s.name}`}
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>
@@ -257,6 +273,7 @@ export default function SkillsPage() {
           )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }

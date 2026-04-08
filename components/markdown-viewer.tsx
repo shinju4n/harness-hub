@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useUnsavedStore } from "@/stores/unsaved-store";
+import { useConfirm } from "@/components/confirm-dialog";
 
 interface MarkdownViewerProps {
   content: string;
@@ -23,6 +24,7 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const isDirty = onSave ? editContent !== editSource : false;
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const generatedId = useId();
   const storeKey = dirtyKey ?? generatedId;
@@ -69,8 +71,16 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey
     }
   };
 
-  const handleCancel = () => {
-    if (isDirty && !window.confirm("Discard unsaved changes?")) return;
+  const handleCancel = async () => {
+    if (isDirty) {
+      const ok = await confirm({
+        title: "Discard unsaved changes?",
+        message: "Your edits will be lost.",
+        confirmLabel: "Discard",
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
     setEditContent(editSource);
     setSaveError(null);
     setMode("preview");
@@ -83,7 +93,7 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm" aria-busy={saving}>
       {/* Save error banner */}
       {saveError && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs rounded-t-xl">
@@ -275,6 +285,7 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey
           )}
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }

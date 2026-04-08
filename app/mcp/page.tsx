@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
+import { EmptyState } from "@/components/empty-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
 
@@ -15,6 +17,7 @@ export default function McpPage() {
   const [formName, setFormName] = useState("");
   const [formCommand, setFormCommand] = useState("");
   const [formArgs, setFormArgs] = useState("");
+  const { confirm, dialog: confirmDialog } = useConfirm();
 
   const fetchServers = () => {
     apiFetch("/api/mcp").then((r) => r.json()).then((d) => {
@@ -73,7 +76,13 @@ export default function McpPage() {
   };
 
   const deleteServer = async (name: string) => {
-    if (!window.confirm(`Delete MCP server "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete MCP server",
+      message: `"${name}" will be removed from your MCP servers config.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const updated = { ...servers };
     delete updated[name];
     await saveServers(updated);
@@ -92,7 +101,7 @@ export default function McpPage() {
             placeholder="server-name"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
           />
         </div>
         <div>
@@ -102,7 +111,7 @@ export default function McpPage() {
             placeholder="e.g. npx"
             value={formCommand}
             onChange={(e) => setFormCommand(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
           />
         </div>
         <div className="sm:col-span-2">
@@ -112,7 +121,7 @@ export default function McpPage() {
             placeholder="e.g. -y @modelcontextprotocol/server-filesystem /path"
             value={formArgs}
             onChange={(e) => setFormArgs(e.target.value)}
-            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+            className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
           />
         </div>
       </div>
@@ -156,8 +165,19 @@ export default function McpPage() {
       {(creating || editingName) && <div className="mb-6">{serverForm}</div>}
 
       {entries.length === 0 && !creating ? (
-        <div className="text-gray-400 dark:text-gray-500 text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-          No MCP servers configured
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+          <EmptyState
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="8" rx="2"/>
+                <rect x="2" y="14" width="20" height="8" rx="2"/>
+                <circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/>
+              </svg>
+            }
+            title="No MCP servers"
+            description="Hook up the Model Context Protocol to give Claude access to outside tools and data."
+            action={{ label: "Add server", onClick: startCreate }}
+          />
         </div>
       ) : (
         <div className="space-y-3">
@@ -178,13 +198,15 @@ export default function McpPage() {
                   </span>
                   <button
                     onClick={() => startEdit(name, config)}
-                    className="text-xs text-gray-400 hover:text-amber-600 transition-colors px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-950"
+                    aria-label={`Edit MCP server ${name}`}
+                    className="text-xs text-gray-400 hover:text-amber-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-950"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => deleteServer(name)}
-                    className="text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                    aria-label={`Delete MCP server ${name}`}
+                    className="text-xs text-red-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
                   >
                     Delete
                   </button>
@@ -194,6 +216,7 @@ export default function McpPage() {
           ))}
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }

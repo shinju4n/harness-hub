@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
 import { ScriptEditorDynamic } from "@/components/script-editor-dynamic";
+import { useToastStore } from "@/stores/toast-store";
 
 interface HookEntry {
   matcher?: string;
@@ -94,6 +96,8 @@ export default function HooksPage() {
   const [newFileName, setNewFileName] = useState("");
   const [newFileContent, setNewFileContent] = useState("");
   const [scriptError, setScriptError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchHooks = () => {
     apiFetch("/api/hooks").then((r) => r.json()).then((d) => {
@@ -243,16 +247,26 @@ export default function HooksPage() {
   };
 
   const deleteScript = async (name: string) => {
-    if (!window.confirm(`Delete hook script "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete hook script",
+      message: `"${name}" will be removed from ~/.claude/hooks/. Bindings that reference it will break.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/hooks/files?name=${encodeURIComponent(name)}`, {
       method: "DELETE",
     });
     if (res.ok) {
+      pushToast("success", `Script "${name}" deleted`);
       if (selected?.name === name) {
         setSelected(null);
         setEditContent("");
       }
       fetchFiles();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      pushToast("error", err.error ?? `Failed to delete "${name}"`);
     }
   };
 
@@ -563,6 +577,7 @@ export default function HooksPage() {
           error={scriptError}
         />
       )}
+      {confirmDialog}
     </div>
   );
 }

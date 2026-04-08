@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { useAppSettingsStore, formatHotkey } from "@/stores/app-settings-store";
 import { useUnsavedStore } from "@/stores/unsaved-store";
 import { FolderPicker } from "@/components/folder-picker";
 import { LoadingOverlay } from "@/components/loading-overlay";
+import { useConfirm } from "@/components/confirm-dialog";
 
 const DEFAULT_NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "grid" },
@@ -46,6 +47,29 @@ const icons: Record<string, React.ReactNode> = {
   gear: <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
 };
 
+/**
+ * Footer hint that surfaces the two app-wide shortcuts (palette + terminal)
+ * so the user discovers them without opening App Settings. The terminal
+ * label is rendered live from the persisted hotkey so a rebind is reflected
+ * immediately.
+ */
+function SidebarShortcutsHint() {
+  const hotkey = useAppSettingsStore((s) => s.terminalHotkey);
+  const terminalLabel = formatHotkey(hotkey);
+  return (
+    <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+      <span className="flex items-center gap-1">
+        <kbd className="font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">⌘K</kbd>
+        <span>search</span>
+      </span>
+      <span className="flex items-center gap-1">
+        <kbd className="font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">{terminalLabel}</kbd>
+        <span>terminal</span>
+      </span>
+    </div>
+  );
+}
+
 function ThemeToggleButton() {
   const { theme, setTheme } = useAppSettingsStore();
 
@@ -58,8 +82,9 @@ function ThemeToggleButton() {
   return (
     <button
       onClick={cycleTheme}
-      title={`Theme: ${theme}`}
-      className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+      title={`Theme: ${theme} (click to cycle)`}
+      aria-label={`Switch theme (current: ${theme})`}
+      className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
     >
       {theme === "dark" ? (
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -88,6 +113,7 @@ function getOrderedItems(navOrder: string[] | null) {
 function ProfileDropdown() {
   const { profiles, activeProfileId, setActiveProfile, addProfile, removeProfile, getActiveProfile } = useAppSettingsStore();
   const { hasUnsaved } = useUnsavedStore();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -119,9 +145,17 @@ function ProfileDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
 
-  const handleProfileSelect = (id: string) => {
+  const handleProfileSelect = async (id: string) => {
     if (id === activeProfileId) { setDropdownOpen(false); return; }
-    if (hasUnsaved() && !window.confirm("Unsaved changes will be lost. Switch profile anyway?")) return;
+    if (hasUnsaved()) {
+      const ok = await confirm({
+        title: "Unsaved changes will be lost",
+        message: "Switching profiles reloads the app. Save your edits first if you want to keep them.",
+        confirmLabel: "Switch anyway",
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
     setActiveProfile(id);
     setDropdownOpen(false);
     setSwitching(true);
@@ -144,9 +178,13 @@ function ProfileDropdown() {
   return (
     <div className="relative" ref={dropdownRef}>
       {switching && <LoadingOverlay />}
+      {confirmDialog}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="w-full text-left px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group"
+        aria-label="Switch profile"
+        aria-expanded={dropdownOpen}
+        aria-haspopup="menu"
+        className="w-full text-left px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
       >
         <div className="flex items-center justify-between">
           <div className="min-w-0">
@@ -191,8 +229,9 @@ function ProfileDropdown() {
                 {profile.id !== "default" && (
                   <button
                     onClick={(e) => handleRemove(e, profile.id)}
-                    className="opacity-0 group-hover/item:opacity-100 shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-all"
-                    title="Remove profile"
+                    className="opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+                    title={`Remove profile ${profile.name}`}
+                    aria-label={`Remove profile ${profile.name}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                   </button>
@@ -209,8 +248,9 @@ function ProfileDropdown() {
                   placeholder="Profile name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
                   autoFocus
+                  aria-label="Profile name"
                 />
                 <div className="flex gap-1">
                   <input
@@ -218,13 +258,15 @@ function ProfileDropdown() {
                     placeholder="/absolute/path/.claude"
                     value={newPath}
                     onChange={(e) => setNewPath(e.target.value)}
-                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                    aria-label="Profile path"
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
-                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    title="Browse"
+                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                    title="Browse for folder"
+                    aria-label="Browse for folder"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                   </button>
@@ -318,8 +360,9 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm lg:hidden"
-        aria-label="Open menu"
+        className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        aria-label="Open navigation menu"
+        aria-expanded={open}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -336,6 +379,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        aria-label="Primary navigation"
         className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -351,26 +395,30 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 draggable
+                aria-current={active ? "page" : undefined}
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-all cursor-grab active:cursor-grabbing ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   active
                     ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
                 } ${isOver ? "border-t-2 border-amber-400" : "border-t-2 border-transparent"}`}
               >
-                <span className={active ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500"}>{icons[item.icon]}</span>
+                <span className={active ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500"} aria-hidden="true">{icons[item.icon]}</span>
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">Claude Code Harness Manager</span>
-          <ThemeToggleButton />
+        <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
+          <SidebarShortcutsHint />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">Claude Code Harness Manager</span>
+            <ThemeToggleButton />
+          </div>
         </div>
       </aside>
     </>

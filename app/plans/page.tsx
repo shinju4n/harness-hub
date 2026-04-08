@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
+import { EmptyState } from "@/components/empty-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
+import { useToastStore } from "@/stores/toast-store";
 
 interface PlanSummary {
   name: string;
@@ -29,6 +32,8 @@ export default function PlansPage() {
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchPlans = () => {
     apiFetch("/api/plans").then((r) => r.json()).then((d) => setPlans(d.plans ?? []));
@@ -59,13 +64,23 @@ export default function PlansPage() {
   };
 
   const deletePlan = async (name: string) => {
-    if (!window.confirm(`Delete plan "${name}"?`)) return;
+    const ok = await confirm({
+      title: "Delete plan",
+      message: `"${name}" will be removed from ~/.claude/plans/. This cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await apiFetch(`/api/plans?name=${encodeURIComponent(name)}`, {
       method: "DELETE",
     });
     if (res.ok) {
+      pushToast("success", `Plan "${name}" deleted`);
       if (selected?.name === name) setSelected(null);
       fetchPlans();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      pushToast("error", err.error ?? `Failed to delete "${name}"`);
     }
   };
 
@@ -94,9 +109,19 @@ export default function PlansPage() {
   const planList = (
     <div className="space-y-0.5">
       {plans.length === 0 ? (
-        <p className="px-3 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-          No plans in ~/.claude/plans/
-        </p>
+        <EmptyState
+          compact
+          icon={
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="8" y="2" width="8" height="4" rx="1"/>
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+              <path d="M9 12h6"/><path d="M9 16h6"/>
+            </svg>
+          }
+          title="No plans yet"
+          description="Plans capture multi-step ideas Claude can hand off, refine, or revisit later."
+          action={{ label: "Create plan", onClick: () => setCreating(true) }}
+        />
       ) : (
         plans.map((plan) => (
           <div key={plan.fileName} className="flex items-start gap-1 group">
@@ -120,7 +145,8 @@ export default function PlansPage() {
             </button>
             <button
               onClick={() => deletePlan(plan.name)}
-              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              aria-label={`Delete plan ${plan.title}`}
+              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:text-red-500 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>
@@ -137,14 +163,14 @@ export default function PlansPage() {
         placeholder="plan-slug"
         value={newName}
         onChange={(e) => setNewName(e.target.value)}
-        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
       />
       <textarea
         placeholder="Initial markdown (optional)"
         value={newContent}
         onChange={(e) => setNewContent(e.target.value)}
         rows={4}
-        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400 resize-none"
+        className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 resize-none"
       />
       {createError && <p className="text-[11px] text-red-500">{createError}</p>}
       <div className="flex gap-1.5">
@@ -232,6 +258,7 @@ export default function PlansPage() {
           )}
         </div>
       </div>
+      {confirmDialog}
     </div>
   );
 }
