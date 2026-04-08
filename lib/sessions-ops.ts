@@ -62,6 +62,44 @@ function isSafeSessionFileName(fileName: string): boolean {
   return /^[A-Za-z0-9_-]+\.json$/.test(fileName);
 }
 
+export interface BulkDeleteResult {
+  deleted: number;
+  oldest: number | null;
+  newest: number | null;
+}
+
+/**
+ * Preview or execute bulk delete of sessions older than `olderThanMs`
+ * milliseconds. Pass `null` for `olderThanMs` to target all sessions.
+ * When `dryRun` is true, no files are removed — only the count/range is
+ * returned so the UI can show a confirmation prompt.
+ */
+export async function bulkDeleteSessions(
+  claudeHome: string,
+  olderThanMs: number | null,
+  dryRun: boolean
+): Promise<BulkDeleteResult> {
+  const sessions = await readSessions(claudeHome);
+  const now = Date.now();
+  const targets = sessions.filter((s) => {
+    if (!isSafeSessionFileName(s.fileName)) return false;
+    if (olderThanMs === null) return true;
+    return s.startedAt > 0 && now - s.startedAt > olderThanMs;
+  });
+
+  const timestamps = targets.map((s) => s.startedAt).filter((t) => t > 0);
+  const oldest = timestamps.length ? Math.min(...timestamps) : null;
+  const newest = timestamps.length ? Math.max(...timestamps) : null;
+
+  if (!dryRun) {
+    await Promise.all(
+      targets.map((s) => deleteSession(claudeHome, s.fileName).catch(() => false))
+    );
+  }
+
+  return { deleted: targets.length, oldest, newest };
+}
+
 /**
  * Deletes a session file by basename. Caller passes the bare file name as
  * returned in `SessionInfo.fileName` (e.g. `12345.json`); we never accept

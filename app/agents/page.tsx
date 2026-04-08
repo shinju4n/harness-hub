@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, mutate } from "@/lib/api-client";
 
 type Tab = "definitions" | "teams";
 
@@ -78,12 +78,16 @@ export default function AgentsPage() {
 
   const saveAgent = async (content: string) => {
     if (!selectedAgent) return;
-    await apiFetch("/api/agents", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: selectedAgent.name, content }),
-    });
-    if (selectedAgent) {
+    const res = await mutate(
+      "/api/agents",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: selectedAgent.name, content }),
+      },
+      { success: `Agent "${selectedAgent.name}" saved`, errorPrefix: "Save failed" }
+    );
+    if (res.ok && selectedAgent) {
       setAgentRawContent(content);
       // Parse the new frontmatter body for display (content after frontmatter)
       const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n([\s\S]*)$/);
@@ -92,11 +96,15 @@ export default function AgentsPage() {
   };
 
   const createAgent = async (name: string, content: string) => {
-    const res = await apiFetch("/api/agents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, content }),
-    });
+    const res = await mutate(
+      "/api/agents",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, content }),
+      },
+      { success: `Agent "${name}" created`, errorPrefix: "Create failed" }
+    );
     if (res.ok) fetchAgents();
     return res.ok;
   };
@@ -252,7 +260,7 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
             </button>
             <button
               onClick={() => onDelete(a.name)}
-              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>

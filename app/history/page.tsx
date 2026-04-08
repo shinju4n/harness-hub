@@ -11,6 +11,12 @@ interface HistoryEntry {
   sessionId: string;
 }
 
+type EntryKey = `${number}\0${string}\0${string}`;
+
+function entryKey(e: HistoryEntry): EntryKey {
+  return `${e.timestamp}\0${e.sessionId}\0${e.display}`;
+}
+
 const PAGE_SIZE = 50;
 
 function formatTimestamp(ts: number): string {
@@ -23,6 +29,75 @@ function formatDay(ts: number): string {
   return new Date(ts).toLocaleDateString();
 }
 
+// Confirmation dialog rendered inline (no external dep).
+function BulkDeleteDialog({
+  count,
+  first,
+  last,
+  onConfirm,
+  onCancel,
+}: {
+  count: number;
+  first: HistoryEntry | null;
+  last: HistoryEntry | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const preview = (e: HistoryEntry | null) =>
+    e
+      ? e.display.length > 80
+        ? e.display.slice(0, 80) + "…"
+        : e.display
+      : "";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md mx-4 p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          Delete {count} {count === 1 ? "entry" : "entries"}?
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          This action cannot be undone.
+        </p>
+        {count > 0 && (
+          <div className="space-y-2 mb-5">
+            {first && (
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">First entry</p>
+                <code className="text-[12px] font-mono text-gray-700 dark:text-gray-300 break-all">
+                  {preview(first)}
+                </code>
+              </div>
+            )}
+            {last && count > 1 && (
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2">
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5">Last entry</p>
+                <code className="text-[12px] font-mono text-gray-700 dark:text-gray-300 break-all">
+                  {preview(last)}
+                </code>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-1.5 text-sm rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+          >
+            Delete {count} {count === 1 ? "entry" : "entries"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -30,6 +105,12 @@ export default function HistoryPage() {
   const [project, setProject] = useState<string>("");
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Multi-select state
+  const [selected, setSelected] = useState<Set<EntryKey>>(new Set());
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const projectRef = useRef(project);
   projectRef.current = project;
 
@@ -70,6 +151,7 @@ export default function HistoryPage() {
 
   const handleProjectChange = (next: string) => {
     setProject(next);
+    setSelected(new Set());
     fetchPage(0, next);
   };
 
@@ -95,7 +177,6 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchPage(0, projectRef.current);
-    // Initial load only; subsequent filter changes go through handleProjectChange.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -109,12 +190,90 @@ export default function HistoryPage() {
     return Array.from(map.entries());
   }, [entries]);
 
+  // Selection helpers
+  const pageKeys = useMemo(() => entries.map(entryKey), [entries]);
+  const selectedOnPage = pageKeys.filter((k) => selected.has(k));
+  const allOnPageSelected = pageKeys.length > 0 && selectedOnPage.length === pageKeys.length;
+  const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
+
+  const toggleEntry = (e: HistoryEntry) => {
+    const k = entryKey(e);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allOnPageSelected) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const k of pageKeys) next.delete(k);
+        return next;
+      });
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const k of pageKeys) next.add(k);
+        return next;
+      });
+    }
+  };
+
+  // Entries corresponding to current selection (in page order).
+  const selectedEntries = useMemo(
+    () => entries.filter((e) => selected.has(entryKey(e))),
+    [entries, selected]
+  );
+
+  const handleBulkDelete = async () => {
+    if (selectedEntries.length === 0) return;
+    setDeleting(true);
+    try {
+      const predicates = selectedEntries.map((e) => ({
+        timestamp: e.timestamp,
+        sessionId: e.sessionId,
+        display: e.display,
+      }));
+      const res = await apiFetch("/api/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ predicates }),
+      });
+      if (res.ok) {
+        setSelected(new Set());
+        setShowConfirm(false);
+        fetchPage(offset, project);
+      } else {
+        const err = await res.json().catch(() => ({ error: "delete failed" }));
+        alert(err.error ?? "delete failed");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const canPrev = offset > 0;
   const canNext = offset + PAGE_SIZE < total;
   const currentEnd = Math.min(offset + entries.length, total);
 
+  const firstSelected = selectedEntries[0] ?? null;
+  const lastSelected = selectedEntries[selectedEntries.length - 1] ?? null;
+
   return (
     <div>
+      {showConfirm && (
+        <BulkDeleteDialog
+          count={selectedEntries.length}
+          first={firstSelected}
+          last={lastSelected}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">History</h2>
@@ -139,6 +298,30 @@ export default function HistoryPage() {
         </select>
       </div>
 
+      {/* Sticky selection bar */}
+      {selected.size > 0 && (
+        <div className="sticky top-0 z-10 mb-3 flex items-center justify-between rounded-xl bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 px-4 py-2.5 shadow-sm">
+          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            {selected.size} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={deleting}
+              className="px-3 py-1 text-xs rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading && entries.length === 0 ? (
         <div className="text-gray-400 dark:text-gray-500 text-center py-12">Loading...</div>
       ) : entries.length === 0 ? (
@@ -147,43 +330,73 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {grouped.map(([day, list]) => (
+          {grouped.map(([day, list], groupIdx) => (
             <div key={day} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
-              <div className="px-4 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+              {/* Day header with select-all checkbox (only on first group of page) */}
+              <div className="px-4 py-2 bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                {groupIdx === 0 && (
+                  <label className="flex items-center cursor-pointer" title="Select all on page">
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someOnPageSelected;
+                      }}
+                      onChange={toggleAll}
+                      className="rounded border-gray-300 dark:border-gray-600 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 h-3.5 w-3.5"
+                    />
+                  </label>
+                )}
                 <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-400">{day}</h3>
               </div>
               <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                {list.map((e, i) => (
-                  <div
-                    key={`${e.sessionId}-${e.timestamp}-${i}`}
-                    className="px-4 py-2.5 group"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <code className="flex-1 min-w-0 font-mono text-[12px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
-                        {e.display}
-                      </code>
-                      <div className="flex items-start gap-2 shrink-0">
-                        <span
-                          className="text-[11px] text-gray-400 dark:text-gray-500"
-                          title={formatTimestamp(e.timestamp)}
-                        >
-                          {new Date(e.timestamp).toLocaleTimeString()}
-                        </span>
-                        <button
-                          onClick={() => deleteEntry(e)}
-                          className="opacity-0 group-hover:opacity-100 text-[11px] text-red-400 hover:text-red-600 transition-all px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          Delete
-                        </button>
+                {list.map((e, i) => {
+                  const k = entryKey(e);
+                  const isChecked = selected.has(k);
+                  return (
+                    <div
+                      key={`${e.sessionId}-${e.timestamp}-${i}`}
+                      className={`px-4 py-2.5 group flex items-start gap-3 transition-colors ${
+                        isChecked ? "bg-amber-50/60 dark:bg-amber-950/40" : ""
+                      }`}
+                    >
+                      <label className="flex items-center pt-0.5 cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleEntry(e)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-amber-500 focus:ring-amber-500 focus:ring-offset-0 h-3.5 w-3.5"
+                        />
+                      </label>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <code className="flex-1 min-w-0 font-mono text-[12px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words">
+                            {e.display}
+                          </code>
+                          <div className="flex items-start gap-2 shrink-0">
+                            <span
+                              className="text-[11px] text-gray-400 dark:text-gray-500"
+                              title={formatTimestamp(e.timestamp)}
+                            >
+                              {new Date(e.timestamp).toLocaleTimeString()}
+                            </span>
+                            <button
+                              onClick={() => deleteEntry(e)}
+                              className="text-[11px] text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        {!project && e.project && (
+                          <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate">
+                            {e.project}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    {!project && e.project && (
-                      <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate">
-                        {e.project}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -196,14 +409,20 @@ export default function HistoryPage() {
         </span>
         <div className="flex gap-2">
           <button
-            onClick={() => fetchPage(Math.max(0, offset - PAGE_SIZE), project)}
+            onClick={() => {
+              setSelected(new Set());
+              fetchPage(Math.max(0, offset - PAGE_SIZE), project);
+            }}
             disabled={!canPrev || loading}
             className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Prev
           </button>
           <button
-            onClick={() => fetchPage(offset + PAGE_SIZE, project)}
+            onClick={() => {
+              setSelected(new Set());
+              fetchPage(offset + PAGE_SIZE, project);
+            }}
             disabled={!canNext || loading}
             className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useUnsavedStore } from "@/stores/unsaved-store";
 
 interface MarkdownViewerProps {
   content: string;
@@ -10,34 +11,89 @@ interface MarkdownViewerProps {
   rawContent?: string;
   fileName?: string;
   onSave?: (content: string) => Promise<void>;
+  /** Stable key used to register dirty state in the global unsaved store. Defaults to a generated id. */
+  dirtyKey?: string;
 }
 
-export function MarkdownViewer({ content, rawContent, fileName, onSave }: MarkdownViewerProps) {
+export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey }: MarkdownViewerProps) {
   const editSource = rawContent ?? content;
   const [mode, setMode] = useState<"preview" | "raw" | "edit">("preview");
   const [editContent, setEditContent] = useState(editSource);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const isDirty = onSave ? editContent !== editSource : false;
+
+  const generatedId = useId();
+  const storeKey = dirtyKey ?? generatedId;
+  const { markDirty, clearDirty } = useUnsavedStore();
+
+  // Reset editContent and clear error when source prop changes or when leaving edit mode
+  useEffect(() => {
+    setEditContent(editSource);
+    setSaveError(null);
+  }, [editSource]);
+
+  // Publish dirty state to global unsaved store; clear on unmount
+  useEffect(() => {
+    if (isDirty) {
+      markDirty(storeKey);
+    } else {
+      clearDirty(storeKey);
+    }
+    return () => clearDirty(storeKey);
+  }, [isDirty, storeKey, markDirty, clearDirty]);
+
+  // Register beforeunload when dirty to prevent accidental navigation
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const handleSave = async () => {
     if (!onSave) return;
+    setSaveError(null);
     setSaving(true);
-    await onSave(editContent);
-    setSaving(false);
-    setMode("preview");
+    try {
+      await onSave(editContent);
+      setSaving(false);
+      setMode("preview");
+    } catch (err) {
+      setSaving(false);
+      setSaveError(err instanceof Error ? err.message : "Save failed. Please try again.");
+    }
   };
 
   const handleCancel = () => {
+    if (isDirty && !window.confirm("Discard unsaved changes?")) return;
     setEditContent(editSource);
+    setSaveError(null);
     setMode("preview");
   };
 
   const startEdit = () => {
     setEditContent(editSource);
+    setSaveError(null);
     setMode("edit");
   };
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+      {/* Save error banner */}
+      {saveError && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs rounded-t-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span className="flex-1">{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-auto hover:text-red-800 dark:hover:text-red-200 transition-colors" aria-label="Dismiss error">✕</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-4 py-2.5 bg-gray-50/50 dark:bg-gray-800/50 gap-2">
         {fileName ? (
@@ -49,7 +105,13 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave }: Markdo
         )}
         <div className="flex items-center gap-2 shrink-0">
           {mode === "edit" ? (
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
+              {isDirty && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+                  Unsaved
+                </span>
+              )}
               <button
                 onClick={handleCancel}
                 className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

@@ -120,7 +120,7 @@ export default function PlansPage() {
             </button>
             <button
               onClick={() => deletePlan(plan.name)}
-              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>

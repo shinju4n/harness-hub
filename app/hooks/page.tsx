@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
+import { ScriptEditorDynamic } from "@/components/script-editor-dynamic";
 
 interface HookEntry {
   matcher?: string;
@@ -75,6 +76,13 @@ export default function HooksPage() {
   const [newMatcher, setNewMatcher] = useState("");
   const [newCommand, setNewCommand] = useState("");
   const [newTimeout, setNewTimeout] = useState("");
+
+  // Binding inline-edit state
+  const [editingBinding, setEditingBinding] = useState<{ event: string; index: number } | null>(null);
+  const [editEvent, setEditEvent] = useState(EVENT_TYPES[0]);
+  const [editMatcher, setEditMatcher] = useState("");
+  const [editCommand, setEditCommand] = useState("");
+  const [editTimeout, setEditTimeout] = useState("");
 
   // Scripts state
   const [files, setFiles] = useState<HookFileSummary[]>([]);
@@ -148,6 +156,48 @@ export default function HooksPage() {
       setNewCommand("");
       setNewMatcher("");
       setNewTimeout("");
+      fetchHooks();
+    }
+  };
+
+  const startEditBinding = (event: string, index: number) => {
+    const entry = hooks[event][index];
+    setEditingBinding({ event, index });
+    setEditEvent(event);
+    setEditMatcher(entry.matcher ?? "");
+    setEditCommand(entry.hooks[0]?.command ?? "");
+    setEditTimeout(entry.hooks[0]?.timeout != null ? String(entry.hooks[0].timeout) : "");
+  };
+
+  const cancelEditBinding = () => {
+    setEditingBinding(null);
+  };
+
+  const saveEditBinding = async () => {
+    if (!editingBinding || !editCommand.trim()) return;
+    const { event: origEvent, index } = editingBinding;
+    const updatedEntry: HookEntry = {
+      hooks: [{
+        type: "command",
+        command: editCommand.trim(),
+        ...(editTimeout ? { timeout: parseInt(editTimeout, 10) } : {}),
+      }],
+      ...(editMatcher.trim() ? { matcher: editMatcher.trim() } : {}),
+    };
+    const updated = { ...hooks };
+    // Remove from original event
+    updated[origEvent] = updated[origEvent].filter((_, i) => i !== index);
+    if (updated[origEvent].length === 0) delete updated[origEvent];
+    // Add to (possibly new) event
+    if (!updated[editEvent]) updated[editEvent] = [];
+    updated[editEvent] = [...updated[editEvent], updatedEntry];
+    const res = await apiFetch("/api/hooks", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hooks: updated, mtime }),
+    });
+    if (res.ok) {
+      setEditingBinding(null);
       fetchHooks();
     }
   };
@@ -356,7 +406,73 @@ export default function HooksPage() {
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{event}</h3>
                   </div>
                   <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                    {entries.map((entry, i) => (
+                    {entries.map((entry, i) => {
+                      const isEditing = editingBinding?.event === event && editingBinding?.index === i;
+                      if (isEditing) {
+                        return (
+                          <div key={i} className="px-4 py-4 bg-amber-50/40 dark:bg-amber-950/30">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Event type</label>
+                                <select
+                                  value={editEvent}
+                                  onChange={(e) => setEditEvent(e.target.value)}
+                                  className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                                >
+                                  {EVENT_TYPES.map((t) => (
+                                    <option key={t} value={t}>{t}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Matcher (optional)</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Bash"
+                                  value={editMatcher}
+                                  onChange={(e) => setEditMatcher(e.target.value)}
+                                  className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+                              <div className="sm:col-span-2">
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Command</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. echo $CLAUDE_TOOL_NAME"
+                                  value={editCommand}
+                                  onChange={(e) => setEditCommand(e.target.value)}
+                                  className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Timeout ms (optional)</label>
+                                <input
+                                  type="number"
+                                  placeholder="e.g. 5000"
+                                  value={editTimeout}
+                                  onChange={(e) => setEditTimeout(e.target.value)}
+                                  className="w-full text-[13px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={saveEditBinding}
+                                className="px-4 py-1.5 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={cancelEditBinding}
+                                className="px-4 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
                       <div key={i} className="px-4 py-3.5 flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs">
@@ -400,14 +516,23 @@ export default function HooksPage() {
                             );
                           })}
                         </div>
-                        <button
-                          onClick={() => deleteHook(event, i)}
-                          className="shrink-0 text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
-                        >
-                          Delete
-                        </button>
+                        <div className="shrink-0 flex gap-1">
+                          <button
+                            onClick={() => startEditBinding(event, i)}
+                            className="text-xs text-gray-400 hover:text-amber-600 transition-colors px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-950"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteHook(event, i)}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -512,7 +637,7 @@ function ScriptsTab({
             </button>
             <button
               onClick={() => onDelete(f.name)}
-              className="opacity-0 group-hover:opacity-100 mt-2 shrink-0 text-xs text-red-400 hover:text-red-600 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              className="mt-2 shrink-0 text-xs text-gray-300 dark:text-gray-700 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400 focus-visible:text-red-500 transition-all px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
             >
               Delete
             </button>
@@ -676,12 +801,10 @@ function ScriptDetail({
         </div>
       </div>
       {editing ? (
-        <textarea
+        <ScriptEditorDynamic
+          filename={file.name}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          spellCheck={false}
-          className="w-full font-mono text-[12px] leading-relaxed p-4 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 focus:outline-none resize-y"
-          rows={Math.max(20, content.split("\n").length + 2)}
+          onChange={setContent}
         />
       ) : (
         <pre className="p-4 bg-gray-50 dark:bg-gray-950 text-[12px] leading-relaxed text-gray-800 dark:text-gray-200 overflow-x-auto">

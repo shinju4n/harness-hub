@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, mutate } from "@/lib/api-client";
 import type { MemoryProject, MemoryFile } from "@/lib/memory-types";
 import { ProjectList } from "./_components/ProjectList";
 import { MemoryList } from "./_components/MemoryList";
@@ -27,11 +27,15 @@ export default function MemoryPage() {
   const [selectedMemory, setSelectedMemory] = useState<MemoryFile | null>(null);
   const [creating, setCreating] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
+  const [loadingProjects, setLoadingProjects] = useState(true);
 
   const fetchProjects = useCallback(() => {
     apiFetch("/api/memory?list=projects")
       .then((r) => r.json())
-      .then((d) => setProjects(d.projects ?? []));
+      .then((d) => {
+        setProjects(d.projects ?? []);
+        setLoadingProjects(false);
+      });
   }, []);
 
   const { refresh } = usePolling(fetchProjects);
@@ -76,28 +80,29 @@ export default function MemoryPage() {
   const handleSave = useCallback(
     async (data: { name: string; description: string; type: string; body: string; mtime: string }) => {
       if (!selectedProject || !selectedMemory) return;
-      const res = await apiFetch("/api/memory", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project: selectedProject.id,
-          fileName: selectedMemory.fileName,
-          name: data.name,
-          description: data.description,
-          type: data.type,
-          body: data.body,
-          mtime: new Date(data.mtime).getTime(),
-        }),
-      });
+      const res = await mutate(
+        "/api/memory",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project: selectedProject.id,
+            fileName: selectedMemory.fileName,
+            name: data.name,
+            description: data.description,
+            type: data.type,
+            body: data.body,
+            mtime: new Date(data.mtime).getTime(),
+          }),
+        },
+        { success: "Memory saved", errorPrefix: "Save failed" }
+      );
       if (res.ok) {
         const [, refreshRes] = await Promise.all([
           fetchMemories(selectedProject.id),
           apiFetch(`/api/memory?project=${encodeURIComponent(selectedProject.id)}&file=${encodeURIComponent(selectedMemory.fileName)}`),
         ]);
         if (refreshRes.ok) setSelectedMemory(await refreshRes.json());
-      } else {
-        const err = await res.json();
-        setWarning(err.error ?? "Save failed");
       }
     },
     [selectedProject, selectedMemory, fetchMemories]
@@ -233,11 +238,18 @@ export default function MemoryPage() {
           {/* Project list panel */}
           <Panel id="projects" minSize="15%" maxSize="40%">
             <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
-              <ProjectList
-                projects={projects}
-                selectedId={selectedProject?.id ?? null}
-                onSelect={handleSelectProject}
-              />
+              {loadingProjects && projects.length === 0 ? (
+                <div className="flex items-center gap-2 px-3 py-4 text-sm text-amber-600 dark:text-amber-400">
+                  <svg className="animate-spin shrink-0" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  Loading projects...
+                </div>
+              ) : (
+                <ProjectList
+                  projects={projects}
+                  selectedId={selectedProject?.id ?? null}
+                  onSelect={handleSelectProject}
+                />
+              )}
             </div>
           </Panel>
 

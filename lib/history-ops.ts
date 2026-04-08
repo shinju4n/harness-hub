@@ -159,6 +159,61 @@ export async function deleteHistoryEntry(
   return removed;
 }
 
+/**
+ * Bulk-deletes all lines whose parsed entry matches any of the given keys.
+ * Performs a single read → filter → tmp-write → rename pass regardless of
+ * how many keys are supplied (O(1) writes, not O(N)). Malformed lines are
+ * preserved verbatim exactly as in deleteHistoryEntry.
+ *
+ * Returns the total number of entries removed.
+ */
+export async function bulkDeleteHistoryEntries(
+  claudeHome: string,
+  keys: HistoryEntryKey[]
+): Promise<number> {
+  if (keys.length === 0) return 0;
+  const filePath = path.join(claudeHome, "history.jsonl");
+  if (!existsSync(filePath)) return 0;
+
+  // Build a Set of serialized keys for O(1) lookup.
+  const keySet = new Set(keys.map((k) => `${k.timestamp}\0${k.sessionId}\0${k.display}`));
+
+  const original = await readFile(filePath, "utf-8");
+  const lines = original.split("\n");
+  const kept: string[] = [];
+  let removed = 0;
+
+  for (const line of lines) {
+    if (!line) {
+      kept.push(line);
+      continue;
+    }
+    let parsed: Partial<HistoryEntry> | null = null;
+    try {
+      parsed = JSON.parse(line) as Partial<HistoryEntry>;
+    } catch {
+      // Malformed line — preserve verbatim, never silently drop user data.
+      kept.push(line);
+      continue;
+    }
+    if (
+      parsed &&
+      keySet.has(`${parsed.timestamp}\0${parsed.sessionId}\0${parsed.display}`)
+    ) {
+      removed += 1;
+      continue;
+    }
+    kept.push(line);
+  }
+
+  if (removed === 0) return 0;
+
+  const tmpPath = filePath + ".tmp";
+  await writeFile(tmpPath, kept.join("\n"), "utf-8");
+  await rename(tmpPath, filePath);
+  return removed;
+}
+
 export async function listHistoryProjects(claudeHome: string): Promise<string[]> {
   const seen = new Set<string>();
   try {

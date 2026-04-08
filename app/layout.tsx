@@ -3,6 +3,8 @@ import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { ThemeProviderWrapper } from "@/components/theme-provider-wrapper";
 import { TerminalHotkey } from "@/components/use-terminal-hotkey";
 import { LayoutShell } from "@/components/layout-shell";
+import { ToastContainer } from "@/components/toast-container";
+import { CommandPalette } from "@/components/command-palette";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,6 +28,8 @@ export default function RootLayout({
         <SidebarWrapper />
         <LayoutShell>{children}</LayoutShell>
         <TerminalHotkey />
+        <ToastContainer />
+        <CommandPalette />
       </body>
     </html>
   );

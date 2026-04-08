@@ -35,6 +35,8 @@
 | **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
 | **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
 | **Terminal** | Bottom-docked shell panel (xterm.js + node-pty), per-page auto cwd, `Ctrl+\`` toggle | [docs](docs/features/terminal.md) |
+| **Toast Notifications** | Global success/error/info toasts wired into all mutation call sites | [docs](docs/features/toast-notifications.md) |
+| **Command Palette** | Cmd+K global search across pages, agents, plans, hook scripts, and sessions | [docs](docs/features/command-palette.md) |
 
 ### Highlights
 

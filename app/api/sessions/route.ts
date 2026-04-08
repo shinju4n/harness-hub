@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
-import { readSessions, deleteSession } from "@/lib/sessions-ops";
+import { readSessions, deleteSession, bulkDeleteSessions } from "@/lib/sessions-ops";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +24,19 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
     return NextResponse.json({ success: true });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 400 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const claudeHome = getClaudeHomeFromRequest(request);
+    const body = await request.json() as { olderThanMs?: number | null; dryRun?: boolean };
+    const olderThanMs = body.olderThanMs ?? null;
+    const dryRun = body.dryRun === true;
+    const result = await bulkDeleteSessions(claudeHome, olderThanMs, dryRun);
+    return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 400 });
   }

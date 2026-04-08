@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { useUnsavedStore } from "@/stores/unsaved-store";
 import { FolderPicker } from "@/components/folder-picker";
 import { LoadingOverlay } from "@/components/loading-overlay";
 
@@ -84,6 +85,7 @@ function getOrderedItems(navOrder: string[] | null) {
 
 function ProfileDropdown() {
   const { profiles, activeProfileId, setActiveProfile, addProfile, removeProfile, getActiveProfile } = useAppSettingsStore();
+  const { hasUnsaved } = useUnsavedStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
@@ -117,6 +119,7 @@ function ProfileDropdown() {
 
   const handleProfileSelect = (id: string) => {
     if (id === activeProfileId) { setDropdownOpen(false); return; }
+    if (hasUnsaved() && !window.confirm("Unsaved changes will be lost. Switch profile anyway?")) return;
     setActiveProfile(id);
     setDropdownOpen(false);
     setSwitching(true);

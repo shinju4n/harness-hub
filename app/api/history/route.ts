@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
-import { readHistory, listHistoryProjects, deleteHistoryEntry } from "@/lib/history-ops";
+import { readHistory, listHistoryProjects, deleteHistoryEntry, bulkDeleteHistoryEntries } from "@/lib/history-ops";
 
 const MAX_LIMIT = 200;
 
@@ -29,7 +29,32 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
-    const { timestamp, sessionId, display } = await request.json();
+    const body = await request.json();
+
+    // Bulk delete: body has a `predicates` array.
+    if (Array.isArray(body.predicates)) {
+      const predicates = body.predicates as Array<unknown>;
+      const invalid = predicates.find(
+        (p) =>
+          typeof (p as Record<string, unknown>).timestamp !== "number" ||
+          typeof (p as Record<string, unknown>).sessionId !== "string" ||
+          typeof (p as Record<string, unknown>).display !== "string"
+      );
+      if (invalid) {
+        return NextResponse.json(
+          { error: "Each predicate requires timestamp (number), sessionId (string), display (string)" },
+          { status: 400 }
+        );
+      }
+      const removed = await bulkDeleteHistoryEntries(
+        claudeHome,
+        predicates as Array<{ timestamp: number; sessionId: string; display: string }>
+      );
+      return NextResponse.json({ success: true, removed });
+    }
+
+    // Single delete (backward compatible).
+    const { timestamp, sessionId, display } = body;
     if (
       typeof timestamp !== "number" ||
       typeof sessionId !== "string" ||

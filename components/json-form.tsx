@@ -119,6 +119,10 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
                   <textarea
                     value={editBuffer}
                     onChange={(e) => { setEditBuffer(e.target.value); setParseError(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") { e.preventDefault(); cancelEditObject(); }
+                      else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEditObject(key); }
+                    }}
                     className="w-full min-h-[200px] rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-xs font-mono text-gray-700 dark:text-gray-300 leading-relaxed resize-y bg-gray-50/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
                     spellCheck={false}
                   />
@@ -166,6 +170,9 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
               type="text"
               value={newKey}
               onChange={(e) => { setNewKey(e.target.value); setNewValueError(null); }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); setAddingKey(false); setNewKey(""); setNewValue(""); setNewValueError(null); }
+              }}
               placeholder="Key name"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
               autoFocus
@@ -173,6 +180,10 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
             <textarea
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); setAddingKey(false); setNewKey(""); setNewValue(""); setNewValueError(null); }
+                else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addField(); }
+              }}
               placeholder='Value (string or JSON, e.g. "hello" or {"key": "value"})'
               className="w-full min-h-[80px] rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-300"
               spellCheck={false}

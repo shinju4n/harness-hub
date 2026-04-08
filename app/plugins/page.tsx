@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, mutate } from "@/lib/api-client";
 
 interface PluginData {
   enabledPlugins: Record<string, boolean>;
@@ -25,16 +25,16 @@ export default function PluginsPage() {
 
   const togglePlugin = async (key: string, enabled: boolean) => {
     if (!data) return;
-    const res = await apiFetch("/api/plugins", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pluginKey: key, enabled, mtime: data.settingsMtime }),
-    });
+    const res = await mutate(
+      "/api/plugins",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pluginKey: key, enabled, mtime: data.settingsMtime }),
+      },
+      { success: `Plugin "${key}" ${enabled ? "enabled" : "disabled"}`, errorPrefix: "Plugin toggle failed" }
+    );
     if (res.ok) fetchPlugins();
-    else {
-      const err = await res.json();
-      setError(err.error);
-    }
   };
 
   if (error) return <div className="text-red-500 text-sm">{error}</div>;

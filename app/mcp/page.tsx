@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { RefreshButton } from "@/components/refresh-button";
 import { usePolling } from "@/lib/use-polling";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, mutate } from "@/lib/api-client";
 
 interface McpServer { command: string; args?: string[]; }
 
@@ -26,11 +26,15 @@ export default function McpPage() {
   const { refresh } = usePolling(fetchServers);
 
   const saveServers = async (updated: Record<string, McpServer>) => {
-    const res = await apiFetch("/api/mcp", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ servers: updated, mtime }),
-    });
+    const res = await mutate(
+      "/api/mcp",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ servers: updated, mtime }),
+      },
+      { success: "MCP servers saved", errorPrefix: "Save failed" }
+    );
     if (res.ok) { fetchServers(); }
     return res.ok;
   };
