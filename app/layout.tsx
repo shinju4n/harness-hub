@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 import { ThemeProviderWrapper } from "@/components/theme-provider-wrapper";
+import { TerminalHotkey } from "@/components/use-terminal-hotkey";
+import { LayoutShell } from "@/components/layout-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,13 +24,8 @@ export default function RootLayout({
       <body className="flex h-screen bg-gray-50/80 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans">
         <ThemeProviderWrapper />
         <SidebarWrapper />
-        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
-              {children}
-            </div>
-          </main>
-        </div>
+        <LayoutShell>{children}</LayoutShell>
+        <TerminalHotkey />
       </body>
     </html>
   );
