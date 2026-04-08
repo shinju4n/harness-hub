@@ -1,11 +1,13 @@
 import { randomUUID } from "crypto";
+import { existsSync } from "fs";
+import { homedir } from "os";
 
 export interface PtyLike {
   write(data: string): void;
   resize(cols: number, rows: number): void;
   kill(): void;
   onData(cb: (data: string) => void): { dispose(): void };
-  onExit(cb: (e: { exitCode: number }) => void): { dispose(): void };
+  onExit(cb: (e: { exitCode: number; signal?: number }) => void): { dispose(): void };
 }
 
 export interface PtyOptions {
@@ -86,17 +88,53 @@ export function createDefaultPtyFactory(): PtyFactory {
   const pty = require("node-pty");
   return (options: PtyOptions): PtyLike => {
     const override = process.env.HARNESS_HUB_SHELL;
+    const isWin = process.platform === "win32";
     const shell = override
       ? override
-      : process.platform === "win32"
+      : isWin
         ? "powershell.exe"
         : (process.env.SHELL || "/bin/zsh");
-    return pty.spawn(shell, [], {
-      name: "xterm-256color",
-      cwd: options.cwd,
-      cols: options.cols,
-      rows: options.rows,
-      env: process.env as { [key: string]: string },
-    });
+
+    // Validate cwd. If it doesn't exist, fall back to home to avoid a
+    // posix_spawn ENOENT or a shell that immediately exits with code 1.
+    let cwd = options.cwd;
+    if (!cwd || !existsSync(cwd)) {
+      console.warn(`[terminal] cwd "${cwd}" missing — falling back to home`);
+      cwd = homedir();
+    }
+
+    // node-pty's native binding chokes on undefined env values. Electron's
+    // process.env can legally contain non-string values; filter to strings.
+    const env: { [key: string]: string } = {};
+    for (const [k, v] of Object.entries(process.env)) {
+      if (typeof v === "string") env[k] = v;
+    }
+    // Ensure the shell has the minimum it needs to start a usable session.
+    if (!env.TERM) env.TERM = "xterm-256color";
+    if (!env.HOME) env.HOME = homedir();
+    if (!env.LANG) env.LANG = "en_US.UTF-8";
+
+    // On macOS/Linux, launch as a login shell so .zprofile/.bash_profile are
+    // sourced — matches what VS Code's integrated terminal does and ensures
+    // PATH / NVM / asdf / rbenv etc. are loaded. Without -l, many zsh setups
+    // that rely on login-time initialization exit with code 1.
+    const args = isWin ? [] : ["-l"];
+
+    console.log(
+      `[terminal] spawning ${shell} ${args.join(" ")} in ${cwd} (${options.cols}x${options.rows})`,
+    );
+
+    try {
+      return pty.spawn(shell, args, {
+        name: "xterm-256color",
+        cwd,
+        cols: options.cols,
+        rows: options.rows,
+        env,
+      });
+    } catch (err) {
+      console.error("[terminal] pty.spawn failed:", err);
+      throw err;
+    }
   };
 }

@@ -185,7 +185,13 @@ app.whenReady().then(async () => {
         }
       },
       onExit: (id, code) => {
-        console.log("[main/term] pty exit:", id, "code:", code);
+        console.log(
+          "[main/term] pty exit:",
+          id,
+          "code:",
+          code,
+          "(1 often means shell startup failure — check .zshrc / .zprofile)",
+        );
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("terminal:exit", { id, code });
         }
