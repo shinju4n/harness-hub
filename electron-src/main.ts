@@ -1,14 +1,17 @@
-import { app, BrowserWindow, Menu, dialog } from "electron";
+import { app, BrowserWindow, Menu, dialog, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import { spawn, fork, ChildProcess } from "child_process";
 import path from "path";
 import { findAvailablePort, waitForServer } from "./server-utils";
 import { createUpdaterController, type UpdaterController, type UpdaterEvent } from "./updater";
+import { TerminalManager, createDefaultPtyFactory } from "./terminal-manager";
+import { resolveClaudeHome, resolveTerminalCwd } from "./cwd-resolver";
 
 let mainWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | null = null;
 let serverPort = 13100;
 let updaterController: UpdaterController | null = null;
+let terminalManager: TerminalManager | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -174,6 +177,61 @@ app.whenReady().then(async () => {
     await startNextServer();
     createWindow();
 
+    terminalManager = new TerminalManager({
+      ptyFactory: createDefaultPtyFactory(),
+      onData: (id, data) => {
+        // NEVER log `data` — contains raw keystrokes including secrets.
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("terminal:data", { id, data });
+        }
+      },
+      onExit: (id, code) => {
+        if (code !== 0) {
+          console.warn(`[terminal] session ${id} exited with code ${code}`);
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("terminal:exit", { id, code });
+        }
+      },
+    });
+
+    ipcMain.handle(
+      "terminal:create",
+      (
+        _e,
+        options: {
+          pathname: string;
+          claudeHome: string | null;
+          cols: number;
+          rows: number;
+        },
+      ) => {
+        const home = resolveClaudeHome(options.claudeHome);
+        const cwd = resolveTerminalCwd(home, options.pathname);
+        try {
+          const id = terminalManager!.create({
+            cwd,
+            cols: options.cols,
+            rows: options.rows,
+          });
+          return { id, cwd };
+        } catch (err) {
+          console.error("[terminal] failed to spawn pty:", (err as Error).message);
+          throw err;
+        }
+      },
+    );
+    // NEVER log the `data` field — raw keystrokes including passwords / tokens.
+    ipcMain.on("terminal:write", (_e, payload: { id: string; data: string }) => {
+      terminalManager?.write(payload.id, payload.data);
+    });
+    ipcMain.on("terminal:resize", (_e, payload: { id: string; cols: number; rows: number }) => {
+      terminalManager?.resize(payload.id, payload.cols, payload.rows);
+    });
+    ipcMain.on("terminal:kill", (_e, payload: { id: string }) => {
+      terminalManager?.kill(payload.id);
+    });
+
     // Only check for updates in packaged builds; dev mode has no stable version.
     updaterController = createUpdaterController({
       updater: autoUpdater,
@@ -206,6 +264,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  terminalManager?.killAll();
   updaterController?.stop();
   killNextServer();
 });

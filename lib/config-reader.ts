@@ -16,6 +16,7 @@ interface SkillInfo {
   name: string;
   source: "plugin" | "custom";
   pluginName?: string;
+  marketplace?: string;
   description?: string;
 }
 
@@ -134,14 +135,23 @@ async function readSkills(claudeHome: string) {
       for (const pd of pluginDirs) {
         if (!pd.isDirectory()) continue;
         const versionDirs = await readdir(path.join(mpDir, pd.name), { withFileTypes: true });
-        const latestVersion = versionDirs.filter((v) => v.isDirectory()).pop();
+        const latestVersion = versionDirs
+          .filter((v) => v.isDirectory())
+          .map((v) => v.name)
+          .sort()
+          .pop();
         if (!latestVersion) continue;
-        const skillsDir = path.join(mpDir, pd.name, latestVersion.name, "skills");
+        const skillsDir = path.join(mpDir, pd.name, latestVersion, "skills");
         try {
           const skills = await readdir(skillsDir, { withFileTypes: true });
           for (const skill of skills) {
             if (skill.isDirectory()) {
-              items.push({ name: skill.name, source: "plugin", pluginName: pd.name });
+              items.push({
+                name: skill.name,
+                source: "plugin",
+                pluginName: pd.name,
+                marketplace: mp.name,
+              });
             }
           }
         } catch {}

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const pluginName = request.nextUrl.searchParams.get("plugin");
 
   if (skillName) {
-    if (skillName.includes("..") || skillName.includes("/") || skillName.includes("\\")) {
+    if (!isSafePathSegment(skillName)) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
     let skillPath: string;
@@ -21,7 +21,14 @@ export async function GET(request: NextRequest) {
       const mdFile = files.find((f: string) => f.endsWith(".md"));
       skillPath = mdFile ? path.join(dirPath, mdFile) : path.join(dirPath, "index.md");
     } else {
-      skillPath = await findPluginSkillPath(claudeHome, pluginName ?? "", skillName);
+      const marketplace = request.nextUrl.searchParams.get("marketplace");
+      if (!marketplace || !pluginName) {
+        return NextResponse.json({ error: "marketplace and plugin required" }, { status: 400 });
+      }
+      if (!isSafePathSegment(marketplace) || !isSafePathSegment(pluginName)) {
+        return NextResponse.json({ error: "Invalid marketplace or plugin" }, { status: 400 });
+      }
+      skillPath = await findPluginSkillPath(claudeHome, marketplace, pluginName, skillName);
     }
 
     const result = await readMarkdownFile(skillPath);
@@ -95,21 +102,29 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-async function findPluginSkillPath(claudeHome: string, pluginName: string, skillName: string): Promise<string> {
-  const cacheDir = path.join(claudeHome, "plugins", "cache");
-  const marketplaces = await readdir(cacheDir, { withFileTypes: true });
-  for (const mp of marketplaces) {
-    if (!mp.isDirectory() || mp.name.startsWith(".")) continue;
-    const pluginDir = path.join(cacheDir, mp.name, pluginName);
-    try {
-      const versions = await readdir(pluginDir, { withFileTypes: true });
-      const latest = versions.filter((v) => v.isDirectory()).pop();
-      if (!latest) continue;
-      const skillDir = path.join(pluginDir, latest.name, "skills", skillName);
-      const files = await readdir(skillDir);
-      const mdFile = files.find((f: string) => f.endsWith(".md") && !f.startsWith("."));
-      if (mdFile) return path.join(skillDir, mdFile);
-    } catch {}
-  }
+function isSafePathSegment(segment: string): boolean {
+  return !segment.includes("..") && !segment.includes("/") && !segment.includes("\\");
+}
+
+async function findPluginSkillPath(
+  claudeHome: string,
+  marketplace: string,
+  pluginName: string,
+  skillName: string
+): Promise<string> {
+  const pluginDir = path.join(claudeHome, "plugins", "cache", marketplace, pluginName);
+  try {
+    const versions = await readdir(pluginDir, { withFileTypes: true });
+    const latest = versions
+      .filter((v) => v.isDirectory())
+      .map((v) => v.name)
+      .sort()
+      .pop();
+    if (!latest) return "";
+    const skillDir = path.join(pluginDir, latest, "skills", skillName);
+    const files = await readdir(skillDir);
+    const mdFile = files.find((f: string) => f.endsWith(".md") && !f.startsWith("."));
+    if (mdFile) return path.join(skillDir, mdFile);
+  } catch {}
   return "";
 }
