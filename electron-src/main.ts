@@ -179,11 +179,13 @@ app.whenReady().then(async () => {
     terminalManager = new TerminalManager({
       ptyFactory: createDefaultPtyFactory(),
       onData: (id, data) => {
+        console.log("[main/term] pty data:", id, "len:", data.length);
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("terminal:data", { id, data });
         }
       },
       onExit: (id, code) => {
+        console.log("[main/term] pty exit:", id, "code:", code);
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("terminal:exit", { id, code });
         }
@@ -191,15 +193,25 @@ app.whenReady().then(async () => {
     });
 
     ipcMain.handle("terminal:create", (_e, options: { cwd: string; cols: number; rows: number }) => {
-      return terminalManager!.create(options);
+      console.log("[main/term] create request:", options);
+      try {
+        const id = terminalManager!.create(options);
+        console.log("[main/term] create success:", id);
+        return id;
+      } catch (err) {
+        console.error("[main/term] create failed:", err);
+        throw err;
+      }
     });
     ipcMain.on("terminal:write", (_e, payload: { id: string; data: string }) => {
+      console.log("[main/term] write:", payload.id, JSON.stringify(payload.data));
       terminalManager?.write(payload.id, payload.data);
     });
     ipcMain.on("terminal:resize", (_e, payload: { id: string; cols: number; rows: number }) => {
       terminalManager?.resize(payload.id, payload.cols, payload.rows);
     });
     ipcMain.on("terminal:kill", (_e, payload: { id: string }) => {
+      console.log("[main/term] kill:", payload.id);
       terminalManager?.kill(payload.id);
     });
 
