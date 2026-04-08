@@ -34,6 +34,7 @@
 | **History** | Paginated view of `history.jsonl` with project/date filters | [docs](docs/features/history.md) |
 | **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
 | **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
+| **Terminal** | Bottom-docked shell panel (xterm.js + node-pty), per-page auto cwd, `Cmd+\`` / `Ctrl+\`` toggle | [docs](docs/features/terminal.md) |
 
 ### Highlights
 
