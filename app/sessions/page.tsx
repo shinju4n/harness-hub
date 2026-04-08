@@ -286,7 +286,7 @@ export default function SessionsPage() {
                               </button>
                               <button
                                 title="Use as CLAUDE.md project root"
-                                onClick={() => router.push(`/settings?tab=claude-md&projectRoot=${encodeURIComponent(s.cwd)}`)}
+                                onClick={() => router.push(`/claude-md?projectRoot=${encodeURIComponent(s.cwd)}`)}
                                 className="p-0.5 rounded text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -250,7 +250,7 @@ export default function DashboardPage() {
         <SummaryCard
           title="CLAUDE.md"
           value={c.claudeMd?.exists ? "Found" : "—"}
-          href="/settings"
+          href="/claude-md"
           icon={icons.claudemd}
           color="gray"
         />

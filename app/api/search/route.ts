@@ -27,6 +27,7 @@ const PAGES: SearchResult[] = [
   { category: "Pages", title: "Sessions", href: "/sessions" },
   { category: "Pages", title: "Plans", href: "/plans" },
   { category: "Pages", title: "History", href: "/history" },
+  { category: "Pages", title: "CLAUDE.md", href: "/claude-md" },
   { category: "Pages", title: "Settings", href: "/settings" },
   { category: "Pages", title: "App Settings", href: "/app-settings" },
   { category: "Pages", title: "Keybindings", href: "/keybindings" },

@@ -148,7 +148,7 @@ export const useAppSettingsStore = create<AppSettingsState>()(
     }),
     {
       name: "harness-hub-settings",
-      version: 2,
+      version: 3,
       migrate: migrateAppSettings,
       // `isRecordingHotkey` is transient — never persist it.
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -171,14 +171,29 @@ export const useAppSettingsStore = create<AppSettingsState>()(
  *   - v2 with a legacy hotkey missing the `code` field → upgrade in place
  *     by leaving `code` empty; the listener will fall back to `key`-based
  *     matching for that one binding until the user re-records.
+ *   - v2 → v3: `/claude-md` route added (split out of `/settings`). If the
+ *     user has a customized `navOrder`, insert it just before `/settings` so
+ *     it appears in a sensible spot instead of being appended to the end by
+ *     the runtime "append unknown items" fallback.
  */
 export function migrateAppSettings(persisted: unknown, version: number): unknown {
   if (!persisted || typeof persisted !== "object") return persisted;
-  const blob = persisted as Record<string, unknown>;
+  let blob = persisted as Record<string, unknown>;
 
   // v1 → v2: terminalHotkey field added.
   if (version < 2 && !("terminalHotkey" in blob)) {
-    return { ...blob, terminalHotkey: DEFAULT_TERMINAL_HOTKEY };
+    blob = { ...blob, terminalHotkey: DEFAULT_TERMINAL_HOTKEY };
+  }
+
+  // v2 → v3: insert /claude-md before /settings in any saved navOrder.
+  if (version < 3 && Array.isArray(blob.navOrder)) {
+    const order = (blob.navOrder as unknown[]).filter((x): x is string => typeof x === "string");
+    if (!order.includes("/claude-md")) {
+      const settingsIdx = order.indexOf("/settings");
+      const insertAt = settingsIdx >= 0 ? settingsIdx : order.length;
+      const next = [...order.slice(0, insertAt), "/claude-md", ...order.slice(insertAt)];
+      blob = { ...blob, navOrder: next };
+    }
   }
 
   // v2+: validate terminalHotkey shape. `null` is a legitimate value
