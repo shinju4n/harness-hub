@@ -10,11 +10,23 @@ interface SkillItem {
   name: string;
   source: "plugin" | "custom";
   pluginName?: string;
+  marketplace?: string;
 }
+
+interface SelectedSkill {
+  content: string;
+  name: string;
+  source: "plugin" | "custom";
+  pluginName?: string;
+  marketplace?: string;
+}
+
+const skillKey = (s: { name: string; source: string; pluginName?: string; marketplace?: string }) =>
+  `${s.source}/${s.marketplace ?? ""}/${s.pluginName ?? ""}/${s.name}`;
 
 export default function SkillsPage() {
   const [skills, setSkills] = useState<{ items: SkillItem[] } | null>(null);
-  const [selected, setSelected] = useState<{ content: string; name: string; source: "plugin" | "custom" } | null>(null);
+  const [selected, setSelected] = useState<SelectedSkill | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
@@ -28,10 +40,17 @@ export default function SkillsPage() {
   const viewSkill = async (skill: SkillItem) => {
     const params = new URLSearchParams({ name: skill.name, source: skill.source });
     if (skill.pluginName) params.set("plugin", skill.pluginName);
+    if (skill.marketplace) params.set("marketplace", skill.marketplace);
     const res = await apiFetch(`/api/skills?${params}`);
     if (res.ok) {
       const data = await res.json();
-      setSelected({ content: data.content, name: skill.name, source: skill.source });
+      setSelected({
+        content: data.content,
+        name: skill.name,
+        source: skill.source,
+        pluginName: skill.pluginName,
+        marketplace: skill.marketplace,
+      });
     }
   };
 
@@ -74,11 +93,29 @@ export default function SkillsPage() {
   const pluginSkills = skills.items.filter((s) => s.source === "plugin");
   const customSkills = skills.items.filter((s) => s.source === "custom");
 
+  const breadcrumb = selected && selected.source === "plugin" && selected.marketplace ? (
+    <div className="mb-2 text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+      <span>{selected.marketplace}</span>
+      {selected.pluginName && (
+        <>
+          <span className="text-gray-300 dark:text-gray-600">›</span>
+          <span>{selected.pluginName}</span>
+        </>
+      )}
+      <span className="text-gray-300 dark:text-gray-600">›</span>
+      <span className="text-gray-700 dark:text-gray-300">{selected.name}</span>
+    </div>
+  ) : null;
+
   const grouped = pluginSkills.reduce<Record<string, SkillItem[]>>((acc, s) => {
-    const key = s.pluginName ?? "unknown";
+    const key = s.marketplace ?? "unknown";
     (acc[key] ??= []).push(s);
     return acc;
   }, {});
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  const sortedMarketplaces = Object.keys(grouped).sort();
 
   const createForm = creating ? (
     <div className="mt-2 p-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50/50 dark:bg-amber-950/50 space-y-2">
@@ -146,22 +183,26 @@ export default function SkillsPage() {
         ))}
         {createForm}
       </div>
-      {Object.entries(grouped).map(([plugin, items]) => (
-        <div key={plugin} className="mb-3">
-          <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">{plugin}</h3>
-          {items.map((s) => (
-            <button
-              key={s.name}
-              onClick={() => viewSkill(s)}
-              className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
-                selected?.name === s.name
-                  ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
+      {sortedMarketplaces.map((marketplace) => (
+        <div key={marketplace} className="mb-3">
+          <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">{marketplace}</h3>
+          {grouped[marketplace].map((s) => {
+            const key = skillKey(s);
+            const isSelected = selected ? skillKey(selected) === key : false;
+            return (
+              <button
+                key={key}
+                onClick={() => viewSkill(s)}
+                className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
+                  isSelected
+                    ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                {s.name}
+              </button>
+            );
+          })}
         </div>
       ))}
     </div>
@@ -192,6 +233,7 @@ export default function SkillsPage() {
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
               Back to list
             </button>
+            {breadcrumb}
             <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
           </div>
         )}
@@ -204,7 +246,10 @@ export default function SkillsPage() {
         </div>
         <div className="flex-1 min-w-0">
           {selected ? (
-            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+            <>
+              {breadcrumb}
+              <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+            </>
           ) : (
             <div className="text-gray-400 dark:text-gray-500 text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
               Select a skill to view
