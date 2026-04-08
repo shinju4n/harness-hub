@@ -47,11 +47,21 @@ export function TerminalDock() {
     let activeId: string | null = null;
     let disposed = false;
 
+    // In React Strict Mode the effect runs twice: the first effect creates
+    // PTY A and its cleanup kills PTY A, then the second effect creates PTY B.
+    // PTY A's exit event arrives asynchronously AFTER the second effect has
+    // already set activeId to PTY B's id. We MUST filter by id so events from
+    // a foreign PTY don't clobber our activeId or pipe output into our xterm.
     const unsubData = api.onData((id, data) => {
+      if (id !== activeId) return;
       console.log("[term] pty->xterm data:", JSON.stringify(data.slice(0, 40)), "id:", id);
       term.write(data);
     });
     const unsubExit = api.onExit((id, code) => {
+      if (id !== activeId) {
+        console.log("[term] ignoring exit for foreign pty:", id, "code:", code);
+        return;
+      }
       console.log("[term] pty exit:", id, "code:", code);
       term.write("\r\n\x1b[33m[process exited]\x1b[0m\r\n");
       activeId = null;
