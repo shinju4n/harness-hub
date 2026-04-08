@@ -3,6 +3,9 @@ productName: Harness Hub
 directories:
   output: dist-electron
 asar: true
+# LZMA compression — saves 20-40% on installer size at the cost of ~30s extra
+# build time and slightly slower first launch on the user's machine.
+compression: maximum
 asarUnpack:
   - "server.js"
   - "node_modules/**/*"
@@ -16,6 +19,17 @@ files:
   - ".next/static/**/*"
   - "public/**/*"
   - "package.json"
+  # Exclude noise that would otherwise inflate the bundle.
+  - "!**/*.map"
+  - "!**/*.md"
+  - "!**/test/**"
+  - "!**/tests/**"
+  - "!**/__tests__/**"
+  - "!**/*.test.*"
+  - "!**/*.spec.*"
+  - "!**/.bin/**"
+  - "!**/LICENSE*"
+  - "!**/CHANGELOG*"
 extraResources:
   - from: ".next/standalone/"
     to: "app.asar.unpacked/"
@@ -49,12 +63,20 @@ mac:
   # with a warning when these are missing, so local dmg builds still succeed
   # — they just ship unsigned, unnotarized, and are only useful for testing.
   notarize: true
+  # Ship only English + Korean. Electron defaults to ~50 Chromium locale
+  # files (~10MB combined). Other languages affect only menu/dialog strings.
+  electronLanguages:
+    - en
+    - ko
 win:
   target:
     - target: nsis
       arch:
         - x64
   icon: build/icon.ico
+  electronLanguages:
+    - en
+    - ko
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
