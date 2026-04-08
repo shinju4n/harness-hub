@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Panel, Group, Separator } from "react-resizable-panels";
+import { Panel, Group } from "react-resizable-panels";
 import { RefreshButton } from "@/components/refresh-button";
+import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
@@ -12,14 +13,6 @@ import { ProjectList } from "./_components/ProjectList";
 import { MemoryList } from "./_components/MemoryList";
 import { MemoryEditor } from "./_components/MemoryEditor";
 import { CreateMemoryModal } from "./_components/CreateMemoryModal";
-
-function ResizeHandle() {
-  return (
-    <Separator className="group w-2 flex items-center justify-center hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors rounded">
-      <div className="w-0.5 h-8 rounded-full bg-gray-200 dark:bg-gray-700 group-hover:bg-amber-400 dark:group-hover:bg-amber-500 transition-colors" />
-    </Separator>
-  );
-}
 
 export default function MemoryPage() {
   const [projects, setProjects] = useState<MemoryProject[]>([]);

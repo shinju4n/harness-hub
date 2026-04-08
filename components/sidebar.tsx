@@ -387,25 +387,40 @@ export function Sidebar() {
         <ProfileDropdown />
 
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+          <p className="px-3 pb-1 text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 select-none">
+            Menu <span className="text-gray-300 dark:text-gray-600 normal-case tracking-normal">· drag to reorder</span>
+          </p>
           {items.map((item, index) => {
             const active = pathname === item.href;
             const isOver = overIndex === index && dragIndex !== null && dragIndex !== index;
+            const isDragging = dragIndex === index;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 draggable
                 aria-current={active ? "page" : undefined}
+                title="Drag to reorder"
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onClick={() => setOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                className={`group relative flex items-center gap-2 pl-1.5 pr-3 py-2.5 rounded-lg text-[13px] transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   active
                     ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
-                } ${isOver ? "border-t-2 border-amber-400" : "border-t-2 border-transparent"}`}
+                } ${isOver ? "border-t-2 border-amber-400" : "border-t-2 border-transparent"} ${isDragging ? "opacity-40" : ""}`}
               >
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 text-gray-300 dark:text-gray-600 group-hover:text-gray-500 dark:group-hover:text-gray-400 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="16" viewBox="0 0 10 16" fill="currentColor">
+                    <circle cx="2" cy="3" r="1.2"/><circle cx="8" cy="3" r="1.2"/>
+                    <circle cx="2" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/>
+                    <circle cx="2" cy="13" r="1.2"/><circle cx="8" cy="13" r="1.2"/>
+                  </svg>
+                </span>
                 <span className={active ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500"} aria-hidden="true">{icons[item.icon]}</span>
                 {item.label}
               </Link>

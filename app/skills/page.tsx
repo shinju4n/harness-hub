@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Panel, Group } from "react-resizable-panels";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { ListSkeleton } from "@/components/loading-skeleton";
+import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
@@ -255,23 +257,30 @@ export default function SkillsPage() {
         )}
       </div>
 
-      {/* Desktop: side-by-side */}
-      <div className="hidden lg:flex gap-6">
-        <div className="w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm self-start sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
-          {skillList}
-        </div>
-        <div className="flex-1 min-w-0">
-          {selected ? (
-            <>
-              {breadcrumb}
-              <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
-            </>
-          ) : (
-            <div className="text-gray-400 dark:text-gray-500 text-center py-20 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-              Select a skill to view
+      {/* Desktop: resizable side-by-side */}
+      <div className="hidden lg:block h-[calc(100vh-8rem)]">
+        <Group id="skills-panels" orientation="horizontal" defaultLayout={{ list: 28, detail: 72 }}>
+          <Panel id="list" minSize="18%" maxSize="50%">
+            <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto">
+              {skillList}
             </div>
-          )}
-        </div>
+          </Panel>
+          <ResizeHandle />
+          <Panel id="detail" minSize="40%">
+            <div className="h-full overflow-y-auto pr-1">
+              {selected ? (
+                <>
+                  {breadcrumb}
+                  <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                  Select a skill to view
+                </div>
+              )}
+            </div>
+          </Panel>
+        </Group>
       </div>
       {confirmDialog}
     </div>
