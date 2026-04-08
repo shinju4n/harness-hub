@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SummaryCard } from "@/components/summary-card";
 import { RefreshButton } from "@/components/refresh-button";
 import { DashboardSkeleton } from "@/components/loading-skeleton";
+import { HarnessScorePanel } from "@/components/harness-score-panel";
 import { useConfigStore } from "@/stores/config-store";
 import { usePolling } from "@/lib/use-polling";
 import {
@@ -181,6 +182,8 @@ export default function DashboardPage() {
       </div>
 
       <ShortcutsPanel />
+
+      <HarnessScorePanel />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <SummaryCard

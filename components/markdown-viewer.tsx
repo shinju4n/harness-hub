@@ -30,11 +30,19 @@ export function MarkdownViewer({ content, rawContent, fileName, onSave, dirtyKey
   const storeKey = dirtyKey ?? generatedId;
   const { markDirty, clearDirty } = useUnsavedStore();
 
-  // Reset editContent and clear error when source prop changes or when leaving edit mode
-  useEffect(() => {
+  // Reset editContent and clear error when the source prop changes. This
+  // is the documented React pattern for "storing information from previous
+  // renders" (https://react.dev/reference/react/useState#storing-information-from-previous-renders) —
+  // a `prevEditSource` state slot compared during render. Effects-with-
+  // setState-on-prop-change are linted against in React 19 because they
+  // trigger an extra render; the in-render setState below updates state
+  // before paint with no extra render.
+  const [prevEditSource, setPrevEditSource] = useState(editSource);
+  if (prevEditSource !== editSource) {
+    setPrevEditSource(editSource);
     setEditContent(editSource);
     setSaveError(null);
-  }, [editSource]);
+  }
 
   // Publish dirty state to global unsaved store; clear on unmount
   useEffect(() => {

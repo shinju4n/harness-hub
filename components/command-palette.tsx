@@ -47,14 +47,26 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  // Focus input when opened
-  useEffect(() => {
+  // When the palette transitions from closed → open, reset the query state
+  // synchronously during render (the React 19-recommended "store info from
+  // previous renders" pattern, instead of setState-in-effect which triggers
+  // an extra render and is linted against).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setQuery("");
       setResults([]);
       setActiveIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 0);
     }
+  }
+
+  // Focus the input when opened. Focus is a real DOM side effect, so it
+  // stays in an effect — only the state resets above moved out.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
   }, [open]);
 
   const fetchResults = useCallback((q: string) => {

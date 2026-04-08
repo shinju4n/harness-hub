@@ -174,6 +174,11 @@ export default function ImagesPage() {
       // Restore focus to the (current) thumbnail node for this id. Looked
       // up via `thumbnailRefs` so a re-mount between open and close still
       // routes focus to the right DOM element rather than a detached one.
+      // The lint warning here flags reading `ref.current` in cleanup as
+      // "the value will likely have changed" — that's exactly the point:
+      // we WANT the post-remount node, not the one we captured at effect
+      // start. Suppressing intentionally.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       thumbnailRefs.current.get(openerId)?.focus();
     };
   }, [lightbox]);

@@ -21,6 +21,7 @@
 | Page | Description | Docs |
 |------|-------------|------|
 | **Dashboard** | Overview cards showing counts for all harness components | [docs](docs/features/dashboard.md) |
+| **Harness Score** | Rule-based audit of agents/skills/hooks/permissions/CLAUDE.md against Claude Code best practices | [docs](docs/features/harness-score.md) |
 | **Plugins** | View installed plugins with version info, toggle enable/disable | [docs](docs/features/plugins.md) |
 | **Skills** | Browse plugin and custom skills with rendered markdown preview, inline editing | [docs](docs/features/skills.md) |
 | **Commands** | View and edit custom slash commands with markdown preview | [docs](docs/features/commands.md) |
