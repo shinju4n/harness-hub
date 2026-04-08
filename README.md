@@ -32,8 +32,10 @@
 | **Sessions** | View current and recent Claude Code sessions with pid/cwd/startedAt | [docs](docs/features/sessions.md) |
 | **Plans** | Browse plan mode documents from `~/.claude/plans/` with markdown preview | [docs](docs/features/plans.md) |
 | **History** | Paginated view of `history.jsonl` with project/date filters | [docs](docs/features/history.md) |
+| **Images** | Gallery of every image attached to a Claude Code conversation, with lightbox + project filter | [docs](docs/features/images.md) |
 | **Keybindings** | View/edit custom keyboard shortcuts | [docs](docs/features/keybindings.md) |
 | **Settings** | Edit `settings.json` via form UI, edit `CLAUDE.md` with live preview | [docs](docs/features/settings.md) |
+| **Profiles** | Switch between multiple `~/.claude` paths (external drives, NAS, cloud sync all welcome) | [docs](docs/features/profiles.md) |
 | **Terminal** | Bottom-docked shell panel (xterm.js + node-pty), per-page auto cwd, `Ctrl+\`` toggle | [docs](docs/features/terminal.md) |
 | **Toast Notifications** | Global success/error/info toasts wired into all mutation call sites | [docs](docs/features/toast-notifications.md) |
 | **Command Palette** | Cmd+K global search across pages, agents, plans, hook scripts, and sessions | [docs](docs/features/command-palette.md) |

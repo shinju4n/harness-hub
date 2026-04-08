@@ -1,25 +1,39 @@
 import { access } from "fs/promises";
 import { statSync, realpathSync } from "fs";
 import path from "path";
-import os from "os";
 
 /**
  * Determine whether a user-supplied Claude home path is safe to operate on.
  *
- * Both the `x-claude-home` request header and the `CLAUDE_HOME` env var are
- * treated as untrusted: headers come from any local client and env vars can
- * be set by any parent process / `.env` leak. We require the resolved path
- * (after symlink resolution when it exists) to live under:
- *   - the user's home directory
- *   - the OS temporary directory (for tests)
- *   - any explicit absolute path in `HARNESS_HUB_ALLOWED_HOMES`
- *     (parsed with `path.delimiter` — `:` on posix, `;` on win32).
+ * Harness Hub is a single-user desktop app: the renderer is bound to
+ * `127.0.0.1`, Electron runs with `contextIsolation: true` /
+ * `nodeIntegration: false`, and there is no multi-tenant boundary. The
+ * realistic threat model is "the machine owner pasted a path" — not a
+ * malicious remote client. So we no longer try to confine Claude home to a
+ * fixed allow-list of base directories; that confinement blocked legitimate
+ * setups (external drives like `/Volumes/Work/.claude`, mounted volumes like
+ * `/mnt/data/.claude`, NAS / cloud-sync folders) without buying us
+ * meaningful protection on a desktop app.
+ *
+ * What we still enforce (hygiene only):
+ *   - must be a string
+ *   - must be non-empty after trimming
+ *   - must not contain a NUL byte
+ *   - must be an absolute path
+ *
+ * We also continue to:
+ *   - auto-append `.claude` if the caller passed a parent directory that
+ *     actually contains a `.claude` subdirectory
+ *   - canonicalize through `realpathSync` so symlink swaps cannot mislead
+ *     downstream callers (the residual TOCTOU note in `claude-md-scopes`
+ *     still applies — the realpath here is at validation time only)
  *
  * NOTE on residual TOCTOU: we realpath at validation time, but any later
  * `writeFile` re-resolves the path lexically, so a symlink swap between
  * validation and write can still escape. Callers writing to these paths
  * should realpath the final target at write time (see claude-md-scopes).
  */
+
 /**
  * Swallow only "path does not exist" style errors from realpath; any other
  * failure (EACCES, ELOOP, ENAMETOOLONG, ...) is a genuine signal that the
@@ -30,60 +44,10 @@ function isMissingPathError(err: unknown): boolean {
   return code === "ENOENT" || code === "ENOTDIR";
 }
 
-function collectAllowedBases(): string[] {
-  const bases: string[] = [];
-
-  // Lexical homedir and its realpath — on some NFS/enterprise setups the
-  // user's `$HOME` is itself a symlink to the canonical path.
-  bases.push(os.homedir());
-  try {
-    bases.push(realpathSync(os.homedir()));
-  } catch (err) {
-    if (!isMissingPathError(err)) throw err;
-  }
-
-  bases.push(os.tmpdir());
-  try {
-    bases.push(realpathSync(os.tmpdir()));
-  } catch (err) {
-    if (!isMissingPathError(err)) throw err;
-  }
-
-  const allowList = process.env.HARNESS_HUB_ALLOWED_HOMES;
-  if (allowList) {
-    for (const entry of allowList.split(path.delimiter)) {
-      const trimmed = entry.trim();
-      if (!trimmed || !path.isAbsolute(trimmed)) continue;
-      bases.push(path.resolve(trimmed));
-      try {
-        bases.push(realpathSync(trimmed));
-      } catch (err) {
-        if (!isMissingPathError(err)) throw err;
-      }
-    }
-  }
-
-  return bases;
-}
-
-function validateAgainstBases(probe: string, source: "override" | "env"): void {
-  const bases = collectAllowedBases();
-  const inside = bases.some((base) => {
-    if (!base) return false;
-    const relative = path.relative(base, probe);
-    return !relative.startsWith("..") && !path.isAbsolute(relative);
-  });
-  if (!inside) {
-    throw new Error(
-      `Claude home path is outside the allowed base directories (${source}): ${probe}`
-    );
-  }
-}
-
 function resolveAndValidate(raw: string, source: "override" | "env"): string {
-  if (typeof raw !== "string") {
-    throw new Error(`Claude home path must be a string (${source})`);
-  }
+  // The TS signature already enforces `raw: string`. The `typeof` check
+  // that used to live here was unreachable defensive code; rely on the
+  // type system instead and start straight at the trim.
   const trimmed = raw.trim();
   if (!trimmed) {
     throw new Error(`Claude home path is empty (${source})`);
@@ -116,10 +80,10 @@ function resolveAndValidate(raw: string, source: "override" | "env"): string {
     }
   }
 
-  // Canonicalize: if the path exists, use its realpath so symlinks cannot
-  // escape the allow-list after validation. If it doesn't exist yet (first
-  // run), fall back to the lexical form. Any non-missing error (e.g. ELOOP
-  // from a symlink cycle) is surfaced so we cannot bypass canonicalization.
+  // Canonicalize: if the path exists, use its realpath so symlinks resolve
+  // to a stable target for downstream callers. If it doesn't exist yet
+  // (first run), fall back to the lexical form. Any non-missing error
+  // (e.g. ELOOP from a symlink cycle) is surfaced.
   let canonical = resolved;
   try {
     canonical = realpathSync(resolved);
@@ -127,7 +91,6 @@ function resolveAndValidate(raw: string, source: "override" | "env"): string {
     if (!isMissingPathError(err)) throw err;
   }
 
-  validateAgainstBases(canonical, source);
   return canonical;
 }
 

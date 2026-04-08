@@ -7,8 +7,12 @@ Harness Hub 윈도우 안에서 셸을 띄워, GUI로 하네스 상태를 보면
 ## 기능
 
 - 하단 도킹 패널에 단일 터미널
-- **`Ctrl+\`` 로 토글** (전 플랫폼 공통)
-  - macOS에서 `Cmd+\``는 OS가 "같은 앱의 창 순환" 단축키로 예약해뒀기 때문에 Electron 웹뷰까지 키 이벤트가 오지 않음. 그래서 mac에서도 `Ctrl+\``를 사용한다.
+- **`Ctrl+\`` 로 토글** (전 플랫폼 공통, 기본값)
+  - macOS에서 `Cmd+\``는 OS가 "같은 앱의 창 순환" 단축키로 예약해뒀기 때문에 Electron 웹뷰까지 키 이벤트가 오지 않음. 그래서 mac에서도 기본값은 `Ctrl+\``.
+  - **App Settings → Terminal Hotkey에서 임의의 키 조합으로 재바인딩** 가능. "Press a key…" 버튼을 클릭하고 원하는 조합을 누르면 즉시 저장된다 (앱 재시작 불필요).
+  - 단축키 자체를 비활성화하면 도크 툴바 버튼으로만 토글한다.
+  - macOS 예약 조합(`Cmd+\``, `Cmd+Q`, `Cmd+W`, `Cmd+H`, `Cmd+M`)을 선택하면 경고가 표시된다 — 저장은 되지만 mac에서는 OS가 키를 가로채 동작하지 않음.
+  - 핫키는 `KeyboardEvent.code` 기반으로 매칭되어 **키보드 레이아웃 독립적**(QWERTZ/AZERTY/Dvorak 동일 동작). v0.8.0 이전에 저장된 핫키는 `code` 필드가 비어 있어 layout-dependent 매칭으로 폴백되며, App Settings에서 한 번 재기록하면 layout-independent로 자동 업그레이드된다.
 - **작업 디렉토리는 터미널을 여는 시점의 페이지 + 활성 프로필로 결정되고, 이후 세션 내내 고정**:
   - Claude 루트 = 활성 프로필의 `homePath` (기본은 `~/.claude`, 커스텀 프로필이면 그 절대경로)
   - `/hooks` → `<claudeHome>/hooks/`

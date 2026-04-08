@@ -8,15 +8,10 @@ describe("getClaudeHome", () => {
     vi.unstubAllEnvs();
   });
 
-  it("returns CLAUDE_HOME env if set and inside an allowed base", () => {
+  it("returns CLAUDE_HOME env if set to an absolute path", () => {
     const safe = path.join(os.homedir(), ".claude-test");
     vi.stubEnv("CLAUDE_HOME", safe);
     expect(getClaudeHome()).toBe(safe);
-  });
-
-  it("rejects CLAUDE_HOME env pointing at a system path", () => {
-    vi.stubEnv("CLAUDE_HOME", "/etc");
-    expect(() => getClaudeHome()).toThrow(/outside/i);
   });
 
   it("rejects CLAUDE_HOME env with a relative path", () => {
@@ -36,7 +31,7 @@ describe("getClaudeHome", () => {
     expect(getClaudeHome()).toBe("/Users/test/.claude");
   });
 
-  describe("override validation (trust boundary for request headers)", () => {
+  describe("override hygiene (single-user desktop threat model)", () => {
     it("accepts an override inside the user's home directory", () => {
       const home = os.homedir();
       const override = path.join(home, ".claude");
@@ -48,33 +43,26 @@ describe("getClaudeHome", () => {
       expect(() => getClaudeHome(override)).not.toThrow();
     });
 
-    it("rejects an override outside the user's home (path traversal defense)", () => {
-      // Use paths whose lookup cleanly ENOENTs so we exercise the lexical
-      // allow-list check instead of hitting EACCES (which now rightly
-      // bubbles up after the catch-narrowing fix).
-      expect(() => getClaudeHome("/nonexistent/.claude")).toThrow(/outside/i);
-      expect(() => getClaudeHome("/opt/no-such-dir/.claude")).toThrow(/outside/i);
-    });
-
-    it("rejects an override pointing at a system directory via .claude suffix", () => {
-      expect(() => getClaudeHome("/Library/Application Support/ClaudeCode/.claude")).toThrow(/outside/i);
+    it("accepts an override on an external drive / mount point", () => {
+      // The point of relaxing validation: paths outside $HOME like external
+      // drives, NAS mounts, and cloud-sync folders are now allowed.
+      expect(() => getClaudeHome("/Volumes/Work/.claude")).not.toThrow();
+      expect(() => getClaudeHome("/mnt/data/.claude")).not.toThrow();
+      expect(() => getClaudeHome("/nonexistent/.claude")).not.toThrow();
     });
 
     it("rejects a non-absolute override", () => {
       expect(() => getClaudeHome("relative/path")).toThrow();
     });
 
-    it("rejects null byte injection", () => {
-      expect(() => getClaudeHome("/Users/test/.claude\u0000/../../etc")).toThrow();
+    it("rejects an empty override (after trim)", () => {
+      // "auto" is the explicit "use default" sentinel, but a blank string
+      // should still be a hard error to surface UI bugs early.
+      expect(() => getClaudeHome("   ")).toThrow();
     });
 
-    it("parses HARNESS_HUB_ALLOWED_HOMES using the platform path delimiter", () => {
-      // On posix: `:` — on win32: `;`. Use the real delimiter so the test
-      // actually exercises the parsing path on the host platform.
-      const extra = path.join(os.tmpdir(), "custom-base");
-      vi.stubEnv("HARNESS_HUB_ALLOWED_HOMES", extra);
-      const override = path.join(extra, ".claude");
-      expect(() => getClaudeHome(override)).not.toThrow();
+    it("rejects null byte injection", () => {
+      expect(() => getClaudeHome("/Users/test/.claude\u0000/../../etc")).toThrow();
     });
   });
 });
