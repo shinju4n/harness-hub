@@ -7,7 +7,8 @@ Harness Hub 윈도우 안에서 셸을 띄워, GUI로 하네스 상태를 보면
 ## 기능
 
 - 하단 도킹 패널에 단일 터미널
-- `Cmd+\`` (macOS) / `Ctrl+\`` (Windows/Linux) 토글
+- **`Ctrl+\`` 로 토글** (전 플랫폼 공통)
+  - macOS에서 `Cmd+\``는 OS가 "같은 앱의 창 순환" 단축키로 예약해뒀기 때문에 Electron 웹뷰까지 키 이벤트가 오지 않음. 그래서 mac에서도 `Ctrl+\``를 사용한다.
 - **작업 디렉토리는 터미널을 여는 시점의 페이지로 결정되고, 이후 세션 내내 고정**:
   - `/hooks` → `~/.claude/hooks/`
   - `/skills` → `~/.claude/skills/`

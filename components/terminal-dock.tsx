@@ -38,6 +38,10 @@ export function TerminalDock() {
     term.loadAddon(fit);
     term.open(containerRef.current);
     fit.fit();
+    // Focus xterm so keystrokes land here right after the hotkey opens the
+    // dock. Without this, focus stays on whatever had it before (sidebar,
+    // main content) and typed characters never reach the PTY.
+    term.focus();
 
     // Attach listeners BEFORE create(). Single-terminal MVP, so no id filter
     // is needed — whatever session exists is this one.
@@ -50,6 +54,16 @@ export function TerminalDock() {
       activeId = null;
     });
 
+    // Register xterm -> PTY forwarding synchronously. `activeId` is populated
+    // after create() resolves; keystrokes before that are dropped (very brief
+    // window), keystrokes after flow straight through.
+    term.onData((data) => {
+      if (activeId) api.write(activeId, data);
+    });
+    term.onResize(({ cols, rows }) => {
+      if (activeId) api.resize(activeId, cols, rows);
+    });
+
     api
       .create({ cwd: sessionCwd, cols: term.cols, rows: term.rows })
       .then((id) => {
@@ -58,12 +72,6 @@ export function TerminalDock() {
           return;
         }
         activeId = id;
-        term.onData((data) => {
-          if (activeId) api.write(activeId, data);
-        });
-        term.onResize(({ cols, rows }) => {
-          if (activeId) api.resize(activeId, cols, rows);
-        });
       })
       .catch((err) => {
         term.write(`\r\n\x1b[31mFailed to start terminal: ${err.message}\x1b[0m\r\n`);
