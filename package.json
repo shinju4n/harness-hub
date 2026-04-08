@@ -1,6 +1,6 @@
 {
   "name": "harness-hub",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "A local desktop dashboard for viewing and managing your Claude Code harness",
   "author": "shinju4n",
   "license": "MIT",
