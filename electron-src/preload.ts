@@ -1,7 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronTerminal", {
-  create: (options: { cwd: string; cols: number; rows: number }): Promise<string> =>
+  create: (options: {
+    pathname: string;
+    claudeHome: string | null;
+    cols: number;
+    rows: number;
+  }): Promise<{ id: string; cwd: string }> =>
     ipcRenderer.invoke("terminal:create", options),
 
   write: (id: string, data: string): void => {

@@ -1,5 +1,10 @@
 export interface ElectronTerminalAPI {
-  create(options: { cwd: string; cols: number; rows: number }): Promise<string>;
+  create(options: {
+    pathname: string;
+    claudeHome: string | null;
+    cols: number;
+    rows: number;
+  }): Promise<{ id: string; cwd: string }>;
   write(id: string, data: string): void;
   resize(id: string, cols: number, rows: number): void;
   kill(id: string): void;

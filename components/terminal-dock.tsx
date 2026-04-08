@@ -6,21 +6,22 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTerminalStore } from "@/stores/terminal-store";
-import { resolvePageCwd } from "@/lib/page-cwd";
+import { useAppSettingsStore } from "@/stores/app-settings-store";
 
 export function TerminalDock() {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
-  // Capture the cwd once at first mount — frozen for this session's lifetime.
-  const [sessionCwd] = useState(() => resolvePageCwd(pathname));
+  // Header label for the resolved cwd. Filled in once the main process
+  // resolves the real path (which depends on the active profile's claude
+  // home and the page segment). Until then we show a placeholder.
+  const [sessionCwd, setSessionCwd] = useState<string>("…");
 
   useEffect(() => {
-    console.log("[term] effect running");
-    if (!containerRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
     const api = window.electronTerminal;
     if (!api) {
-      console.log("[term] window.electronTerminal missing — web mode");
-      containerRef.current.innerHTML =
+      container.innerHTML =
         '<div class="p-4 text-sm text-gray-500">Terminal is only available in the Electron app.</div>';
       return;
     }
@@ -38,72 +39,60 @@ export function TerminalDock() {
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.open(containerRef.current);
+    term.open(container);
     fit.fit();
-    console.log("[term] xterm opened, cols/rows:", term.cols, term.rows);
 
-    // Attach listeners BEFORE create(). Single-terminal MVP, so no id filter
-    // is needed — whatever session exists is this one.
     let activeId: string | null = null;
     let disposed = false;
 
-    // In React Strict Mode the effect runs twice: the first effect creates
-    // PTY A and its cleanup kills PTY A, then the second effect creates PTY B.
-    // PTY A's exit event arrives asynchronously AFTER the second effect has
-    // already set activeId to PTY B's id. We MUST filter by id so events from
-    // a foreign PTY don't clobber our activeId or pipe output into our xterm.
+    // In React Strict Mode the effect runs twice. Filter events by id so
+    // foreign PTYs (from the first, disposed effect) don't clobber our state.
     const unsubData = api.onData((id, data) => {
       if (id !== activeId) return;
-      console.log("[term] pty->xterm data:", JSON.stringify(data.slice(0, 40)), "id:", id);
       term.write(data);
     });
-    const unsubExit = api.onExit((id, code) => {
-      if (id !== activeId) {
-        console.log("[term] ignoring exit for foreign pty:", id, "code:", code);
-        return;
-      }
-      console.log("[term] pty exit:", id, "code:", code);
+    const unsubExit = api.onExit((id) => {
+      if (id !== activeId) return;
       term.write("\r\n\x1b[33m[process exited]\x1b[0m\r\n");
       activeId = null;
     });
 
-    // Register xterm -> PTY forwarding synchronously. `activeId` is populated
-    // after create() resolves; keystrokes before that are dropped (very brief
-    // window), keystrokes after flow straight through.
+    // Register xterm -> PTY forwarding synchronously.
     term.onData((data) => {
-      console.log("[term] xterm->pty data:", JSON.stringify(data), "activeId:", activeId);
       if (activeId) api.write(activeId, data);
     });
     term.onResize(({ cols, rows }) => {
       if (activeId) api.resize(activeId, cols, rows);
     });
 
+    // Read the active profile's claude home at the moment of opening.
+    // "auto" becomes null so the main process applies its default resolution.
+    const profile = useAppSettingsStore.getState().getActiveProfile();
+    const claudeHome = profile.homePath === "auto" ? null : profile.homePath;
+
     api
-      .create({ cwd: sessionCwd, cols: term.cols, rows: term.rows })
-      .then((id) => {
-        console.log("[term] create resolved:", id, "disposed:", disposed);
+      .create({ pathname, claudeHome, cols: term.cols, rows: term.rows })
+      .then((result) => {
         if (disposed) {
-          api.kill(id);
+          api.kill(result.id);
           return;
         }
-        activeId = id;
+        activeId = result.id;
+        setSessionCwd(result.cwd);
         // Focus xterm AFTER PTY is ready. Delay one tick so the helper
         // textarea is fully attached to the DOM.
-        setTimeout(() => {
-          console.log("[term] focusing xterm");
-          term.focus();
-        }, 0);
+        setTimeout(() => term.focus(), 0);
       })
       .catch((err) => {
         console.error("[term] create failed:", err);
         term.write(`\r\n\x1b[31mFailed to start terminal: ${err.message}\x1b[0m\r\n`);
       });
 
-    // Clicking anywhere in the dock should focus xterm as a safety net.
+    // Clicking anywhere in the dock focuses xterm as a safety net.
     const onContainerClick = () => term.focus();
-    containerRef.current.addEventListener("click", onContainerClick);
+    container.addEventListener("click", onContainerClick);
 
-    // Use ResizeObserver so panel drag resizes refit xterm (window.resize does not fire).
+    // ResizeObserver so panel drag resizes refit xterm (window.resize does not fire).
     const resizeObserver = new ResizeObserver(() => {
       try {
         fit.fit();
@@ -111,21 +100,20 @@ export function TerminalDock() {
         // fit() can throw during unmount — ignore.
       }
     });
-    resizeObserver.observe(containerRef.current);
+    resizeObserver.observe(container);
 
     return () => {
-      console.log("[term] cleanup running, activeId:", activeId);
       disposed = true;
       resizeObserver.disconnect();
-      containerRef.current?.removeEventListener("click", onContainerClick);
+      container?.removeEventListener("click", onContainerClick);
       unsubData();
       unsubExit();
       if (activeId) api.kill(activeId);
       activeId = null;
       term.dispose();
     };
-    // Empty deps: we want this effect to run exactly once per mount. Pathname
-    // changes must NOT recreate the PTY.
+    // Empty deps: run exactly once per mount. Pathname changes must NOT
+    // recreate the PTY.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

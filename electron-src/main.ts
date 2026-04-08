@@ -5,6 +5,7 @@ import path from "path";
 import { findAvailablePort, waitForServer } from "./server-utils";
 import { createUpdaterController, type UpdaterController, type UpdaterEvent } from "./updater";
 import { TerminalManager, createDefaultPtyFactory } from "./terminal-manager";
+import { resolveClaudeHome, resolveTerminalCwd } from "./cwd-resolver";
 
 let mainWindow: BrowserWindow | null = null;
 let nextServer: ChildProcess | null = null;
@@ -198,17 +199,43 @@ app.whenReady().then(async () => {
       },
     });
 
-    ipcMain.handle("terminal:create", (_e, options: { cwd: string; cols: number; rows: number }) => {
-      console.log("[main/term] create request:", options);
-      try {
-        const id = terminalManager!.create(options);
-        console.log("[main/term] create success:", id);
-        return id;
-      } catch (err) {
-        console.error("[main/term] create failed:", err);
-        throw err;
-      }
-    });
+    ipcMain.handle(
+      "terminal:create",
+      (
+        _e,
+        options: {
+          pathname: string;
+          claudeHome: string | null;
+          cols: number;
+          rows: number;
+        },
+      ) => {
+        const home = resolveClaudeHome(options.claudeHome);
+        const cwd = resolveTerminalCwd(home, options.pathname);
+        console.log(
+          "[main/term] create request: pathname=",
+          options.pathname,
+          "profileHome=",
+          options.claudeHome,
+          "resolvedHome=",
+          home,
+          "cwd=",
+          cwd,
+        );
+        try {
+          const id = terminalManager!.create({
+            cwd,
+            cols: options.cols,
+            rows: options.rows,
+          });
+          console.log("[main/term] create success:", id);
+          return { id, cwd };
+        } catch (err) {
+          console.error("[main/term] create failed:", err);
+          throw err;
+        }
+      },
+    );
     ipcMain.on("terminal:write", (_e, payload: { id: string; data: string }) => {
       console.log("[main/term] write:", payload.id, JSON.stringify(payload.data));
       terminalManager?.write(payload.id, payload.data);

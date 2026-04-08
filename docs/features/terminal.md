@@ -9,12 +9,15 @@ Harness Hub 윈도우 안에서 셸을 띄워, GUI로 하네스 상태를 보면
 - 하단 도킹 패널에 단일 터미널
 - **`Ctrl+\`` 로 토글** (전 플랫폼 공통)
   - macOS에서 `Cmd+\``는 OS가 "같은 앱의 창 순환" 단축키로 예약해뒀기 때문에 Electron 웹뷰까지 키 이벤트가 오지 않음. 그래서 mac에서도 `Ctrl+\``를 사용한다.
-- **작업 디렉토리는 터미널을 여는 시점의 페이지로 결정되고, 이후 세션 내내 고정**:
-  - `/hooks` → `~/.claude/hooks/`
-  - `/skills` → `~/.claude/skills/`
-  - `/commands` → `~/.claude/commands/`
+- **작업 디렉토리는 터미널을 여는 시점의 페이지 + 활성 프로필로 결정되고, 이후 세션 내내 고정**:
+  - Claude 루트 = 활성 프로필의 `homePath` (기본은 `~/.claude`, 커스텀 프로필이면 그 절대경로)
+  - `/hooks` → `<claudeHome>/hooks/`
+  - `/skills` → `<claudeHome>/skills/`
+  - `/commands` → `<claudeHome>/commands/`
   - `/agents`, `/plugins`, `/mcp`, `/rules`, `/memory` → 동일 패턴
-  - 그 외 → `~/.claude/`
+  - 그 외 → `<claudeHome>/`
+- 프로필이 다르면 같은 페이지라도 다른 디렉토리에서 터미널이 열린다 (프로필 A는 `/Users/me/.claude/hooks`, 프로필 B는 `/Users/me/work/.claude/hooks` 식)
+- cwd 해석은 **메인 프로세스에서** 수행된다 (`electron-src/cwd-resolver.ts`). 렌더러는 `pathname`과 `claudeHome`만 IPC로 전달하고, 메인이 `os.homedir()` 등 Node API로 실제 경로 계산
 - 터미널을 연 뒤 사이드바에서 다른 페이지로 이동해도 **PTY는 그대로 살아있고 작업 디렉토리도 변하지 않는다**. 다른 디렉토리의 터미널을 원하면 닫고 다시 연다
 - 패널 크기 조절은 수직 리사이즈 핸들로
 - 사용자가 GUI 편집기와 같은 파일을 터미널에서 동시에 만지는 경우, 기존 `lib/file-ops.ts`의 mtime 가드가 그대로 보호한다 (Harness Hub가 새로 만든 동시 writer가 아니라, 사용자가 직접 친 명령이므로)
@@ -44,9 +47,9 @@ Harness Hub 윈도우 안에서 셸을 띄워, GUI로 하네스 상태를 보면
 | 파일 | 역할 |
 |---|---|
 | `electron-src/terminal-manager.ts` | PTY 세션 lifecycle 관리 (의존성 주입 가능한 PtyFactory) |
+| `electron-src/cwd-resolver.ts` | `claudeHome` + `pathname` → 절대 cwd 해석 (메인 프로세스 전용, 테스트 완비) |
 | `electron-src/main.ts` | IPC 핸들러 등록, `before-quit`에서 `killAll` |
 | `electron-src/preload.ts` | `contextBridge`로 `window.electronTerminal` 노출 |
-| `lib/page-cwd.ts` | pathname → cwd 매핑 (순수 함수, 테스트 완비) |
 | `stores/terminal-store.ts` | `isOpen` 상태 Zustand 스토어 |
 | `components/terminal-dock.tsx` | xterm.js 마운트, IPC 와이어링, ResizeObserver |
 | `components/terminal-dock-wrapper.tsx` | `dynamic({ssr: false})`로 lazy 로드 |
