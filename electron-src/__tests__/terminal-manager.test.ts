@@ -103,10 +103,10 @@ describe("TerminalManager", () => {
   });
 
   it("killAll closes every session", () => {
-    const id1 = manager.create({ cwd: "/a", cols: 80, rows: 24 });
+    manager.create({ cwd: "/a", cols: 80, rows: 24 });
     const mockPty2 = makeMockPty();
     (factory as ReturnType<typeof vi.fn>).mockReturnValueOnce(mockPty2);
-    const id2 = manager.create({ cwd: "/b", cols: 80, rows: 24 });
+    manager.create({ cwd: "/b", cols: 80, rows: 24 });
     manager.killAll();
     expect(mockPty.kill).toHaveBeenCalled();
     expect(mockPty2.kill).toHaveBeenCalled();
