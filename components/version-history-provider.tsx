@@ -47,14 +47,13 @@ export function VersionHistoryProvider({ children }: { children: React.ReactNode
 
     init();
 
-    // Profile change subscription
-    const unsub = useAppSettingsStore.subscribe(
-      (state) => state.activeProfileId,
-      () => {
+    // Profile change subscription — zustand v5 subscribe passes (state, prevState)
+    const unsub = useAppSettingsStore.subscribe((state, prevState) => {
+      if (state.activeProfileId !== prevState.activeProfileId) {
         resetForProfile();
         apiFetch("/api/rescan", { method: "POST" }).catch(() => {});
-      },
-    );
+      }
+    });
 
     return () => {
       unsub();
