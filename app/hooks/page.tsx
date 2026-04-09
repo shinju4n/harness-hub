@@ -567,6 +567,7 @@ export default function HooksPage() {
           setEditing={setEditing}
           saving={savingScript}
           onSelect={viewScript}
+          onBack={() => { setSelected(null); setEditing(false); setEditContent(""); }}
           onSave={saveScript}
           onDelete={deleteScript}
           creating={creatingScript}
@@ -593,6 +594,7 @@ interface ScriptsTabProps {
   setEditing: (b: boolean) => void;
   saving: boolean;
   onSelect: (name: string) => void;
+  onBack: () => void;
   onSave: () => void;
   onDelete: (name: string) => void;
   creating: boolean;
@@ -614,6 +616,7 @@ function ScriptsTab({
   setEditing,
   saving,
   onSelect,
+  onBack,
   onSave,
   onDelete,
   creating,
@@ -723,15 +726,24 @@ function ScriptsTab({
             {createForm}
           </div>
         ) : (
-          <ScriptDetail
-            file={selected}
-            content={editContent}
-            setContent={setEditContent}
-            editing={editing}
-            setEditing={setEditing}
-            saving={saving}
-            onSave={onSave}
-          />
+          <div>
+            <button
+              onClick={onBack}
+              className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+              Back to list
+            </button>
+            <ScriptDetail
+              file={selected}
+              content={editContent}
+              setContent={setEditContent}
+              editing={editing}
+              setEditing={setEditing}
+              saving={saving}
+              onSave={onSave}
+            />
+          </div>
         )}
       </div>
 

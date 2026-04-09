@@ -6,8 +6,27 @@ import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { FolderPicker } from "@/components/folder-picker";
 import { usePolling } from "@/lib/use-polling";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, getApiHeaders } from "@/lib/api-client";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+
+/**
+ * Fetch from /api/claude-md using the default home (~/.claude) regardless of
+ * which profile is active. Used so the "User" scope always reads the global
+ * root CLAUDE.md, not a project-local .claude/CLAUDE.md.
+ *
+ * Copies all standard API headers (auth, profile-id, etc.) but strips the
+ * `x-claude-home` override so the server falls back to `~/.claude`.
+ */
+function apiFetchDefaultHome(url: string, options?: RequestInit): Promise<Response> {
+  const profileHeaders = getApiHeaders();
+  const merged = new Headers(options?.headers);
+  for (const [key, value] of Object.entries(profileHeaders)) {
+    if (key !== "x-claude-home" && !merged.has(key)) {
+      merged.set(key, value);
+    }
+  }
+  return fetch(url, { ...options, headers: merged });
+}
 
 const RECENT_ROOTS_KEY = "harness-hub:recent-project-roots";
 const MAX_RECENT = 5;
@@ -85,6 +104,14 @@ function ClaudeMdPageInner() {
   // profile switches. (`getActiveProfile` itself is stable, so we also touch
   // `activeProfileId` to trigger re-renders on switch.)
   const activeProfileId = useAppSettingsStore((s) => s.activeProfileId);
+
+  // Determine profile type: default (~/.claude) vs custom (project-specific path).
+  // Deferred to state so SSR always starts with "default" and the client
+  // reconciles after hydration — avoiding a hydration mismatch when the
+  // persisted Zustand store holds a non-default profile.
+  const [isDefaultProfile, setIsDefaultProfile] = useState(true);
+  const [inferredRoot, setInferredRoot] = useState<string | null>(null);
+
   const [scopes, setScopes] = useState<ScopeMeta[]>([]);
   const [activeScope, setActiveScope] = useState<ScopeId>("user");
   const [scopeContent, setScopeContent] = useState<ScopeContent | null>(null);
@@ -109,16 +136,58 @@ function ClaudeMdPageInner() {
   }, []);
 
   const fetchScopes = useCallback(async () => {
-    const res = await apiFetch(`/api/claude-md${scopeQuery()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setScopes(data.scopes ?? []);
+    const profile = getActiveProfile();
+    const profileIsDefault = !profile.homePath || profile.homePath === "auto";
+
+    if (profileIsDefault) {
+      // Default profile: just fetch scopes normally
+      const res = await apiFetch(`/api/claude-md${scopeQuery()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScopes(data.scopes ?? []);
+      }
+    } else {
+      // Custom profile: fetch user scope from default home, project scope from custom home
+      const [userRes, projectRes] = await Promise.all([
+        apiFetchDefaultHome(`/api/claude-md?scope=user`),
+        apiFetch(`/api/claude-md${scopeQuery()}`),
+      ]);
+      const merged: ScopeMeta[] = [];
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        // Convert scope content response to scope meta
+        merged.push({
+          id: "user" as ScopeId,
+          label: "User",
+          description: "Personal instructions loaded in every session (~/.claude/CLAUDE.md)",
+          filePath: userData.filePath ?? "",
+          exists: userData.exists ?? false,
+          writable: userData.writable ?? true,
+          available: true,
+        });
+      }
+      if (projectRes.ok) {
+        const projectData = await projectRes.json();
+        const allScopes: ScopeMeta[] = projectData.scopes ?? [];
+        // Take project scope from the custom home response
+        const projScope = allScopes.find((s: ScopeMeta) => s.id === "project");
+        if (projScope) merged.push(projScope);
+      }
+      setScopes(merged);
     }
-  }, [scopeQuery]);
+  }, [scopeQuery, getActiveProfile]);
 
   const fetchScopeContent = useCallback(
     async (scope: ScopeId) => {
-      const res = await apiFetch(`/api/claude-md${scopeQuery({ scope })}`);
+      const profile = getActiveProfile();
+      const profileIsDefault = !profile.homePath || profile.homePath === "auto";
+
+      // For "user" scope on a custom profile, fetch from default home (~/.claude)
+      const useDefaultHome = !profileIsDefault && scope === "user";
+      const fetcher = useDefaultHome ? apiFetchDefaultHome : apiFetch;
+      const qs = useDefaultHome ? `?scope=${scope}` : scopeQuery({ scope });
+
+      const res = await fetcher(`/api/claude-md${qs}`);
       if (res.ok) {
         const data = await res.json();
         setScopeContent(data);
@@ -126,7 +195,7 @@ function ClaudeMdPageInner() {
         setScopeContent(null);
       }
     },
-    [scopeQuery]
+    [scopeQuery, getActiveProfile]
   );
 
   const refreshAll = useCallback(() => {
@@ -194,24 +263,42 @@ function ClaudeMdPageInner() {
   };
 
   // Prefill from query param OR auto-infer from a project-local profile.
-  // Runs once after hydration. The polling hook above already fired its
-  // initial fetch with an empty projectRoot, so when we pre-fill we also
-  // need to refetch scopes/content explicitly to flip Project/Local from
-  // disabled to enabled without waiting for the next poll tick.
+  // Runs once after hydration and on profile switch. When the active profile
+  // is default, we reset to "user" scope only. For custom profiles, we
+  // auto-infer the project root from the homePath so the Project scope
+  // is immediately available.
   useEffect(() => {
-    const qpRoot = searchParams.get("projectRoot");
-    let initialRoot = qpRoot ?? "";
-    if (!initialRoot) {
-      const inferred = inferProjectRootFromProfile(getActiveProfile().homePath);
-      if (inferred) initialRoot = inferred;
+    const profile = getActiveProfile();
+    const profileIsDefault = !profile.homePath || profile.homePath === "auto";
+
+    // Sync derived profile state (deferred to avoid hydration mismatch)
+    setIsDefaultProfile(profileIsDefault);
+    setInferredRoot(inferProjectRootFromProfile(profile.homePath));
+
+    // Reset active scope to "user" when switching to default profile
+    if (profileIsDefault) {
+      setActiveScope("user");
+      activeScopeRef.current = "user";
+      setProjectRootDraft("");
+      setProjectRoot("");
+      projectRootRef.current = "";
+      setProjectRootError(null);
+    } else {
+      const qpRoot = searchParams.get("projectRoot");
+      let initialRoot = qpRoot ?? "";
+      if (!initialRoot) {
+        const inferred = inferProjectRootFromProfile(profile.homePath);
+        if (inferred) initialRoot = inferred;
+      }
+
+      if (initialRoot) {
+        setProjectRootDraft(initialRoot);
+        setProjectRoot(initialRoot);
+        projectRootRef.current = initialRoot;
+      }
     }
 
-    if (initialRoot) {
-      setProjectRootDraft(initialRoot);
-      setProjectRoot(initialRoot);
-      projectRootRef.current = initialRoot;
-      fetchScopes();
-    }
+    fetchScopes();
     setRecentRoots(loadRecentRoots());
     fetchScopeContent(activeScopeRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,7 +319,12 @@ function ClaudeMdPageInner() {
     if (!scopeContent || !scopeContent.writable) return;
     const body: Record<string, unknown> = { scope: activeScope, content };
     if (projectRoot) body.projectRoot = projectRoot;
-    const res = await apiFetch("/api/claude-md", {
+
+    // For "user" scope on a custom profile, save to default home (~/.claude)
+    const useDefaultHome = !isDefaultProfile && activeScope === "user";
+    const fetcher = useDefaultHome ? apiFetchDefaultHome : apiFetch;
+
+    const res = await fetcher("/api/claude-md", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -243,6 +335,10 @@ function ClaudeMdPageInner() {
     }
   };
 
+  // Filter scopes: default profile = user only, custom profile = user + project
+  const allowedScopeIds: ScopeId[] = isDefaultProfile ? ["user"] : ["user", "project"];
+  const visibleScopes = scopes.filter((s) => allowedScopeIds.includes(s.id));
+
   const currentScopeMeta = scopes.find((s) => s.id === activeScope);
   const isReadOnly = scopeContent ? !scopeContent.writable : false;
 
@@ -251,15 +347,20 @@ function ClaudeMdPageInner() {
       <div className="mb-6 pl-10 lg:pl-0 flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">CLAUDE.md</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">User instructions and project memory across scopes</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {isDefaultProfile
+              ? "User-level instructions (~/.claude/CLAUDE.md)"
+              : "User + project instructions"}
+          </p>
         </div>
         <RefreshButton onRefresh={refresh} />
       </div>
 
       <div className="space-y-4">
-        {/* Scope selector */}
+        {/* Scope selector — only show when there are multiple visible scopes */}
+        {visibleScopes.length > 1 && (
         <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 w-fit">
-          {scopes.map((s) => {
+          {visibleScopes.map((s) => {
             const active = s.id === activeScope;
             const disabled = !s.available;
             return (
@@ -289,11 +390,22 @@ function ClaudeMdPageInner() {
             );
           })}
         </div>
+        )}
 
-        {/* Project root input — required for project/local scopes */}
+        {/* Auto-inferred project root indicator */}
+        {!isDefaultProfile && inferredRoot && (
+          <div className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/50">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Project root <span className="font-mono text-gray-700 dark:text-gray-300">{inferredRoot}</span>
+            </p>
+          </div>
+        )}
+
+        {/* Project root input — only show for non-default profiles with no auto-inferred root */}
+        {!isDefaultProfile && !inferredRoot && (
         <div className="px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/50 space-y-1.5">
           <label className="block text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            Project root (required for Project / Local scopes)
+            Project root (required for Project scope)
           </label>
           <div className="flex gap-2">
             {/* Input + folder icon + recents chevron grouped */}
@@ -394,6 +506,7 @@ function ClaudeMdPageInner() {
             <p className="text-[11px] font-mono text-gray-400 dark:text-gray-500 truncate">Active: {projectRoot}</p>
           )}
         </div>
+        )}
 
         {/* Folder picker modal */}
         {showFolderPicker && (
