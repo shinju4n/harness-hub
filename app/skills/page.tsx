@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Panel, Group } from "react-resizable-panels";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
@@ -13,8 +13,8 @@ import { useToastStore } from "@/stores/toast-store";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { DiffModal } from "@/components/diff-modal";
 import { ExternalEditBanner } from "@/components/external-edit-banner";
-import { TrashSection } from "@/components/trash-section";
 import { useVersionHistoryStore } from "@/stores/version-history-store";
+import { useVersionDiff } from "@/lib/use-version-diff";
 
 interface SkillItem {
   name: string;
@@ -46,47 +46,8 @@ export default function SkillsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const pushToast = useToastStore((s) => s.push);
   const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot, selectedSnapshotId } = useVersionHistoryStore();
-  const [diffData, setDiffData] = useState<{ oldContents: Record<string, string>; newContents: Record<string, string>; oldLabel: string; newLabel: string } | null>(null);
+  const diffData = useVersionDiff("skill", selected?.name, selected?.rawContent, compareSnapshotId);
   const [applying, setApplying] = useState(false);
-
-  // Fetch diff data when compareSnapshotId changes
-  useEffect(() => {
-    if (!compareSnapshotId || !selected) {
-      setDiffData(null);
-      return;
-    }
-    let cancelled = false;
-    async function loadDiff() {
-      try {
-        // Fetch the selected snapshot contents
-        const res = await apiFetch(
-          `/api/version-history?action=get&kind=skill&name=${encodeURIComponent(selected!.name)}&id=${encodeURIComponent(compareSnapshotId!)}`
-        );
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-
-        // "Old" = snapshot, "New" = current on-disk content
-        const oldContents = data.contents as Record<string, string>;
-        const newContents: Record<string, string> = {};
-        // Use rawContent as the current version for the primary file
-        const primaryFile = Object.keys(oldContents)[0] ?? "SKILL.md";
-        newContents[primaryFile] = selected!.rawContent;
-
-        if (!cancelled) {
-          setDiffData({
-            oldContents,
-            newContents,
-            oldLabel: `v${data.snapshot.id.slice(0, 8)} · ${new Date(data.snapshot.createdAt).toLocaleString()}`,
-            newLabel: "Current",
-          });
-        }
-      } catch {
-        if (!cancelled) setDiffData(null);
-      }
-    }
-    loadDiff();
-    return () => { cancelled = true; };
-  }, [compareSnapshotId, selected]);
 
   const fetchSkills = () => {
     apiFetch("/api/skills").then((r) => r.json()).then(setSkills);
@@ -331,11 +292,6 @@ export default function SkillsPage() {
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
               {skillList}
             </div>
-            <TrashSection
-              items={[]}
-              onRestore={() => {}}
-              onPermanentDelete={() => {}}
-            />
           </div>
         ) : mobileView === "history" && selected.source === "custom" ? (
           <div>
@@ -404,11 +360,6 @@ export default function SkillsPage() {
           <Panel id="list" minSize="18%" maxSize="50%">
             <div className="h-full rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm overflow-y-auto flex flex-col gap-3">
               {skillList}
-              <TrashSection
-                items={[]}
-                onRestore={() => {}}
-                onPermanentDelete={() => {}}
-              />
             </div>
           </Panel>
           <ResizeHandle />

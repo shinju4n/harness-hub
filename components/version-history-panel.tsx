@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { useVersionHistoryStore } from "@/stores/version-history-store";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useToastStore } from "@/stores/toast-store";
 
 interface Snapshot {
   id: string;
   createdAt: number;
   source: "harness-hub" | "claude-hook" | "external" | "bootstrap" | "restore";
+  label?: string;
   pinned?: boolean;
 }
 
@@ -74,6 +77,9 @@ function VersionRow({
           {badge.label}
         </span>
       </div>
+      {snap.label && (
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate pl-5 mt-0.5">{snap.label}</p>
+      )}
       {selected && (
         <div className="flex gap-2 mt-2 pl-5">
           <button
@@ -104,6 +110,8 @@ export function VersionHistoryPanel({ kind, name }: VersionHistoryPanelProps) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<FilterTab>("all");
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const pushToast = useToastStore((s) => s.push);
 
   const fetchSnapshots = async () => {
     if (!name) return;
@@ -135,12 +143,23 @@ export function VersionHistoryPanel({ kind, name }: VersionHistoryPanelProps) {
   };
 
   const handleRestore = async (snap: Snapshot) => {
-    await apiFetch("/api/version-history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "restore", kind, name, snapshotId: snap.id }),
+    const ok = await confirm({
+      title: "Restore version",
+      message: `Restore to ${new Date(snap.createdAt).toLocaleString()}? Current content will be saved as a pre-restore snapshot.`,
+      confirmLabel: "Restore",
     });
-    fetchSnapshots();
+    if (!ok) return;
+    try {
+      await apiFetch("/api/version-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", kind, name, snapshotId: snap.id }),
+      });
+      pushToast("success", "Version restored");
+      fetchSnapshots();
+    } catch {
+      pushToast("error", "Failed to restore version");
+    }
   };
 
   const handleCompare = (snap: Snapshot) => {
@@ -202,6 +221,7 @@ export function VersionHistoryPanel({ kind, name }: VersionHistoryPanelProps) {
           ))
         )}
       </div>
+      {confirmDialog}
     </div>
   );
 }

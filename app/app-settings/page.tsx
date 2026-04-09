@@ -646,11 +646,10 @@ export default function AppSettingsPage() {
               </p>
             </div>
             <button
-              onClick={handleCleanup}
-              disabled={cleaningUp}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+              disabled
+              className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50"
             >
-              {cleaningUp ? "Cleaning…" : "Clean up orphaned objects"}
+              Clean up (coming soon)
             </button>
           </div>
         </div>

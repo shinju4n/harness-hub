@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
     // Empty body or parse error = full rescan
   }
 
-  const report = await runRescan({ versionBase, homePath: claudeHome, profileId, scopedItem });
-  return NextResponse.json(report);
+  try {
+    const report = await runRescan({ versionBase, homePath: claudeHome, profileId, scopedItem });
+    return NextResponse.json(report);
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import { rename, mkdir, rm, unlink } from "fs/promises";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
+import { isSafeSegment } from "@/lib/path-validator";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,10 +26,6 @@ function missing503() {
   );
 }
 
-function isSafe(segment: string): boolean {
-  return !segment.includes("..") && !segment.includes("/") && !segment.includes("\\");
-}
-
 // ---------------------------------------------------------------------------
 // GET
 // ---------------------------------------------------------------------------
@@ -43,12 +40,16 @@ export async function GET(request: NextRequest) {
   const kind = params.get("kind") as "skill" | "agent" | null;
   const name = params.get("name");
 
+  if (kind !== "skill" && kind !== "agent") {
+    return NextResponse.json({ error: "Invalid kind" }, { status: 400 });
+  }
+
   // --- list ---
   if (action === "list") {
     if (!kind || !name) {
       return NextResponse.json({ error: "kind and name required" }, { status: 400 });
     }
-    if (!isSafe(name)) {
+    if (!isSafeSegment(name)) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     if (!kind || !name || !snapshotId) {
       return NextResponse.json({ error: "kind, name, and id required" }, { status: 400 });
     }
-    if (!isSafe(name) || !isSafe(snapshotId)) {
+    if (!isSafeSegment(name) || !isSafeSegment(snapshotId)) {
       return NextResponse.json({ error: "Invalid parameter" }, { status: 400 });
     }
 
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
     if (!kind || !name) {
       return NextResponse.json({ error: "kind and name required" }, { status: 400 });
     }
-    if (!isSafe(name)) {
+    if (!isSafeSegment(name)) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
     if (!kind || !name || !snapshotId) {
       return NextResponse.json({ error: "kind, name, snapshotId required" }, { status: 400 });
     }
-    if (!isSafe(name) || !isSafe(snapshotId)) {
+    if (!isSafeSegment(name) || !isSafeSegment(snapshotId)) {
       return NextResponse.json({ error: "Invalid parameter" }, { status: 400 });
     }
 
@@ -224,7 +225,7 @@ export async function POST(request: NextRequest) {
     if (!kind || !name || !snapshotId) {
       return NextResponse.json({ error: "kind, name, snapshotId required" }, { status: 400 });
     }
-    if (!isSafe(name) || !isSafe(snapshotId)) {
+    if (!isSafeSegment(name) || !isSafeSegment(snapshotId)) {
       return NextResponse.json({ error: "Invalid parameter" }, { status: 400 });
     }
 
@@ -279,7 +280,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "id required" }, { status: 400 });
     }
-    if (!isSafe(id)) {
+    if (!isSafeSegment(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 

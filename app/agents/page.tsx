@@ -9,11 +9,11 @@ import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
 import { DiffModal } from "@/components/diff-modal";
-import { TrashSection } from "@/components/trash-section";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
 import { useToastStore } from "@/stores/toast-store";
 import { useVersionHistoryStore } from "@/stores/version-history-store";
+import { useVersionDiff } from "@/lib/use-version-diff";
 
 type Tab = "definitions" | "teams";
 
@@ -211,41 +211,8 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
   const pushToast = useToastStore((s) => s.push);
   const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot } = useVersionHistoryStore();
-  const [diffData, setDiffData] = useState<{ oldContents: Record<string, string>; newContents: Record<string, string>; oldLabel: string; newLabel: string } | null>(null);
+  const diffData = useVersionDiff("agent", selected?.name, rawContent ?? content ?? undefined, compareSnapshotId);
   const [applying, setApplying] = useState(false);
-
-  useEffect(() => {
-    if (!compareSnapshotId || !selected) {
-      setDiffData(null);
-      return;
-    }
-    let cancelled = false;
-    async function loadDiff() {
-      try {
-        const res = await apiFetch(
-          `/api/version-history?action=get&kind=agent&name=${encodeURIComponent(selected!.name)}&id=${encodeURIComponent(compareSnapshotId!)}`
-        );
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        const oldContents = data.contents as Record<string, string>;
-        const newContents: Record<string, string> = {};
-        const primaryFile = Object.keys(oldContents)[0] ?? `${selected!.name}.md`;
-        newContents[primaryFile] = rawContent ?? content ?? "";
-        if (!cancelled) {
-          setDiffData({
-            oldContents,
-            newContents,
-            oldLabel: `v${data.snapshot.id.slice(0, 8)} · ${new Date(data.snapshot.createdAt).toLocaleString()}`,
-            newLabel: "Current",
-          });
-        }
-      } catch {
-        if (!cancelled) setDiffData(null);
-      }
-    }
-    loadDiff();
-    return () => { cancelled = true; };
-  }, [compareSnapshotId, selected, rawContent, content]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -342,9 +309,6 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
         ))
       )}
       {createForm}
-      <div className="mt-3">
-        <TrashSection items={[]} onRestore={() => {}} onPermanentDelete={() => {}} />
-      </div>
     </div>
   );
 

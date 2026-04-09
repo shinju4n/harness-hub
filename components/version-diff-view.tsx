@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactDiffViewer, { DiffMethod } from "react-diff-viewer-continued";
 
 interface DiffViewProps {
@@ -13,9 +13,14 @@ interface DiffViewProps {
 const MAX_EAGER_FILES = 50;
 
 export function VersionDiffView({ oldContents, newContents, oldLabel, newLabel }: DiffViewProps) {
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   // Collect all file names from both sides
   const allFiles = Array.from(new Set([...Object.keys(oldContents), ...Object.keys(newContents)]));
