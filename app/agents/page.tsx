@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Panel, Group } from "react-resizable-panels";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
 import { EmptyState } from "@/components/empty-state";
 import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
+import { VersionHistoryPanel } from "@/components/version-history-panel";
+import { TrashSection } from "@/components/trash-section";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
 import { useToastStore } from "@/stores/toast-store";
+import { useVersionHistoryStore } from "@/stores/version-history-store";
 
 type Tab = "definitions" | "teams";
 
@@ -204,6 +207,8 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
+  const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const { isHistoryOpen, toggleHistory } = useVersionHistoryStore();
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -300,6 +305,9 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
         ))
       )}
       {createForm}
+      <div className="mt-3">
+        <TrashSection items={[]} onRestore={() => {}} onPermanentDelete={() => {}} />
+      </div>
     </div>
   );
 
@@ -311,15 +319,39 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
             {agentList}
           </div>
-        ) : (
+        ) : mobileHistoryOpen ? (
           <div>
             <button
-              onClick={onBack}
+              onClick={() => setMobileHistoryOpen(false)}
               className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
-              Back to list
+              Back to detail
             </button>
+            <VersionHistoryPanel kind="agent" name={selected.name} />
+          </div>
+        ) : (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                Back to list
+              </button>
+              {selected.scope === "user" && (
+                <button
+                  onClick={() => setMobileHistoryOpen(true)}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  History
+                </button>
+              )}
+            </div>
             <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
           </div>
         )}
@@ -337,7 +369,19 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
           <Panel id="detail" minSize="40%">
             <div className="h-full overflow-y-auto pr-1">
               {selected && content ? (
-                <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
+                isHistoryOpen ? (
+                  <Group id="agents-detail-inner" orientation="horizontal">
+                    <Panel id="agents-editor-area" defaultSize={70} minSize={40}>
+                      <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
+                    </Panel>
+                    <ResizeHandle />
+                    <Panel id="agents-history-area" defaultSize={30} minSize={20}>
+                      <VersionHistoryPanel kind="agent" name={selected.name} />
+                    </Panel>
+                  </Group>
+                ) : (
+                  <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} historyButton={selected.scope === "user" ? <button onClick={toggleHistory} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors px-2 py-1 rounded-md hover:bg-amber-50 dark:hover:bg-amber-950"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>History</button> : undefined} />
+                )
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                   Select an agent to view
@@ -351,7 +395,7 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   );
 }
 
-function AgentDetail({ agent, content, rawContent, onSave }: { agent: AgentDef; content: string; rawContent: string; onSave: (c: string) => Promise<void> }) {
+function AgentDetail({ agent, content, rawContent, onSave, historyButton }: { agent: AgentDef; content: string; rawContent: string; onSave: (c: string) => Promise<void>; historyButton?: ReactNode }) {
   return (
     <div className="space-y-4">
       {/* Meta card */}
@@ -366,6 +410,7 @@ function AgentDetail({ agent, content, rawContent, onSave }: { agent: AgentDef; 
           <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
             {agent.scope}
           </span>
+          {historyButton && <div className="ml-auto">{historyButton}</div>}
         </div>
         {agent.description && (
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{agent.description}</p>
