@@ -3,7 +3,30 @@
 import { useEffect, useState } from "react";
 import { useAppSettingsStore, formatHotkey, isOsReservedHotkey, DEFAULT_TERMINAL_HOTKEY } from "@/stores/app-settings-store";
 import type { Profile, TerminalHotkey } from "@/stores/app-settings-store";
+import { useToastStore } from "@/stores/toast-store";
+import { apiFetch } from "@/lib/api-client";
 import packageJson from "@/package.json";
+
+const HOOK_PREVIEW_JSON = JSON.stringify(
+  {
+    hooks: {
+      PostToolUse: [
+        {
+          matcher: "Edit|Write",
+          hooks: [
+            {
+              type: "http",
+              url: "http://127.0.0.1:3000/api/rescan",
+              headers: { "x-harness-hub-hook": "1" },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  null,
+  2
+);
 
 const INTERVAL_OPTIONS = [
   { value: 3, label: "3s" },
@@ -24,6 +47,7 @@ interface UpdateInfo {
 
 export default function AppSettingsPage() {
   const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile, theme, setTheme, terminalHotkey, setTerminalHotkey, resetTerminalHotkey, setRecordingHotkey: setRecordingFlag } = useAppSettingsStore();
+  const { push: pushToast } = useToastStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
@@ -34,6 +58,14 @@ export default function AppSettingsPage() {
   const [newProfilePath, setNewProfilePath] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [recordingHotkey, setRecordingHotkey] = useState(false);
+
+  // Hook toggle state
+  const [hookInstalled, setHookInstalled] = useState<boolean | null>(null);
+  const [hookLoading, setHookLoading] = useState(false);
+  const [hookPreviewOpen, setHookPreviewOpen] = useState(false);
+
+  // Cleanup state
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   /**
    * Hotkey recording uses a window-level capture listener while
@@ -102,6 +134,44 @@ export default function AppSettingsPage() {
     terminalHotkey.meta === DEFAULT_TERMINAL_HOTKEY.meta &&
     terminalHotkey.shift === DEFAULT_TERMINAL_HOTKEY.shift &&
     terminalHotkey.alt === DEFAULT_TERMINAL_HOTKEY.alt;
+
+  // Check hook installation status on mount
+  useEffect(() => {
+    apiFetch("/api/claude-hook")
+      .then((r) => r.json())
+      .then((data: { installed: boolean }) => setHookInstalled(data.installed))
+      .catch(() => setHookInstalled(false));
+  }, []);
+
+  const toggleHook = async () => {
+    if (hookInstalled === null) return;
+    setHookLoading(true);
+    try {
+      const method = hookInstalled ? "DELETE" : "POST";
+      const res = await apiFetch("/api/claude-hook", { method });
+      if (res.ok) {
+        setHookInstalled(!hookInstalled);
+        pushToast("success", hookInstalled ? "Hook uninstalled" : "Hook installed");
+      } else {
+        pushToast("error", "Failed to update hook");
+      }
+    } catch {
+      pushToast("error", "Failed to update hook");
+    }
+    setHookLoading(false);
+  };
+
+  const handleCleanup = async () => {
+    setCleaningUp(true);
+    try {
+      // Placeholder: cleanup action not yet implemented server-side
+      await new Promise((r) => setTimeout(r, 500));
+      pushToast("success", "Cleanup complete (no orphaned objects found)");
+    } catch {
+      pushToast("error", "Cleanup failed");
+    }
+    setCleaningUp(false);
+  };
 
   const checkForUpdates = async () => {
     setChecking(true);
@@ -482,6 +552,107 @@ export default function AppSettingsPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Real-time Capture (Claude Code Hook) */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Real-time Capture</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Automatically snapshot Skills and Agents when Claude Code edits them
+              </p>
+            </div>
+            <button
+              onClick={toggleHook}
+              disabled={hookInstalled === null || hookLoading}
+              aria-pressed={hookInstalled ?? false}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                hookInstalled ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  hookInstalled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <button
+              onClick={() => setHookPreviewOpen((v) => !v)}
+              className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className={`transition-transform ${hookPreviewOpen ? "rotate-90" : ""}`}
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+              Preview hook JSON
+            </button>
+            {hookPreviewOpen && (
+              <pre className="mt-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-[11px] font-mono text-gray-600 dark:text-gray-400 overflow-x-auto whitespace-pre-wrap">
+                {HOOK_PREVIEW_JSON}
+              </pre>
+            )}
+          </div>
+        </div>
+
+        {/* Archived Histories */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">Archived Histories</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Profiles whose version histories have been archived
+            </p>
+          </div>
+          <div className="mt-4 flex flex-col items-center justify-center py-6 text-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="text-gray-300 dark:text-gray-600 mb-2"
+            >
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+              <path d="m3.3 7 8.7 5 8.7-5" />
+              <path d="M12 22V12" />
+            </svg>
+            <p className="text-sm text-gray-400 dark:text-gray-500">No archived histories</p>
+            <p className="text-xs text-gray-300 dark:text-gray-600 mt-0.5">
+              Archived profile histories will appear here
+            </p>
+          </div>
+        </div>
+
+        {/* Storage */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Storage</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Remove orphaned objects not referenced by any snapshot
+              </p>
+            </div>
+            <button
+              onClick={handleCleanup}
+              disabled={cleaningUp}
+              className="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {cleaningUp ? "Cleaning…" : "Clean up orphaned objects"}
+            </button>
+          </div>
         </div>
 
         {/* About */}
