@@ -5,6 +5,7 @@ import { TerminalHotkey } from "@/components/use-terminal-hotkey";
 import { LayoutShell } from "@/components/layout-shell";
 import { ToastContainer } from "@/components/toast-container";
 import { CommandPalette } from "@/components/command-palette";
+import { VersionHistoryProvider } from "@/components/version-history-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,7 +27,9 @@ export default function RootLayout({
       <body className="flex h-screen bg-gray-50/80 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased font-sans">
         <ThemeProviderWrapper />
         <SidebarWrapper />
-        <LayoutShell>{children}</LayoutShell>
+        <VersionHistoryProvider>
+          <LayoutShell>{children}</LayoutShell>
+        </VersionHistoryProvider>
         <TerminalHotkey />
         <ToastContainer />
         <CommandPalette />
