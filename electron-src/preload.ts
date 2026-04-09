@@ -35,3 +35,14 @@ contextBridge.exposeInMainWorld("electronTerminal", {
     return () => ipcRenderer.removeListener("terminal:exit", handler);
   },
 });
+
+contextBridge.exposeInMainWorld("electronVersionStore", {
+  getBasePath: (): Promise<string> =>
+    ipcRenderer.invoke("version-store:base-path"),
+
+  onWindowRegainFocus: (cb: () => void): (() => void) => {
+    const handler = () => cb();
+    ipcRenderer.on("window:regain-focus", handler);
+    return () => ipcRenderer.removeListener("window:regain-focus", handler);
+  },
+});

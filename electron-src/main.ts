@@ -101,6 +101,12 @@ function createWindow(): void {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+
+  mainWindow.on("focus", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("window:regain-focus");
+    }
+  });
 }
 
 function killNextServer(): void {
@@ -230,6 +236,10 @@ app.whenReady().then(async () => {
     });
     ipcMain.on("terminal:kill", (_e, payload: { id: string }) => {
       terminalManager?.kill(payload.id);
+    });
+
+    ipcMain.handle("version-store:base-path", () => {
+      return app.getPath("userData");
     });
 
     // Only check for updates in packaged builds; dev mode has no stable version.
