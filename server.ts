@@ -1,5 +1,4 @@
 import { createServer, IncomingMessage } from "http";
-import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { handleWsTerminal } from "./lib/terminal/ws-terminal";
@@ -61,8 +60,14 @@ function validateWsCookie(req: IncomingMessage): boolean {
   const match = cookie.match(/(?:^|;\s*)__hh_session=([^;]+)/);
   if (!match) return false;
 
-  // Import validateSession from lib/auth. Since this runs in the same process
-  // as Next.js, the in-memory session store is shared.
+  // IMPORTANT: In standalone mode, this custom server and Next.js share the
+  // same Node.js process and require cache, so the in-memory session Map in
+  // lib/auth.ts is shared. However, Next.js may webpack-bundle lib/auth.ts
+  // into its own chunk with a separate module scope. To guarantee the same
+  // session store, we re-implement the cookie check here against the session
+  // Map exported from the require'd module. If this ever breaks (sessions
+  // created in API routes are invisible here), switch to a signed-cookie
+  // (HMAC) approach that doesn't depend on shared in-memory state.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { validateSession } = require("./lib/auth");
   return validateSession(match[1]);
@@ -74,8 +79,7 @@ function validateWsCookie(req: IncomingMessage): boolean {
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
-    const parsedUrl = parse(req.url || "/", true);
-    handle(req, res, parsedUrl);
+    handle(req, res);
   });
 
   // WebSocket server attached to the HTTP server, handling upgrade manually
@@ -83,7 +87,7 @@ app.prepare().then(() => {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", (req, socket, head) => {
-    const { pathname } = parse(req.url || "/", true);
+    const { pathname } = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
     if (pathname !== "/ws/terminal") {
       socket.destroy();

@@ -121,11 +121,9 @@ export function handleWsTerminal(ws: WebSocket): void {
         }
 
         const cwd = process.env.CLAUDE_HOME || homedir();
-        const id = mgr.create({
-          cwd,
-          cols: msg.cols || 80,
-          rows: msg.rows || 24,
-        });
+        const cols = Math.min(Math.max(Number(msg.cols) || 80, 1), 500);
+        const rows = Math.min(Math.max(Number(msg.rows) || 24, 1), 200);
+        const id = mgr.create({ cwd, cols, rows });
         ownedSessions.add(id);
         sessionOwners.set(id, ws);
         send(ws, { type: "created", id, cwd });
@@ -140,7 +138,9 @@ export function handleWsTerminal(ws: WebSocket): void {
 
       case "resize": {
         if (!ownedSessions.has(msg.id)) return;
-        mgr.resize(msg.id, msg.cols, msg.rows);
+        const rCols = Math.min(Math.max(Number(msg.cols) || 80, 1), 500);
+        const rRows = Math.min(Math.max(Number(msg.rows) || 24, 1), 200);
+        mgr.resize(msg.id, rCols, rRows);
         break;
       }
 

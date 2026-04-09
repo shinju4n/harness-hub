@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { isWebMode } from "@/lib/mode";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +42,11 @@ export async function verifyPassword(plain: string): Promise<boolean> {
   }
   const pass = process.env.HARNESS_HUB_AUTH_PASS;
   if (!pass) return false;
-  return plain === pass;
+  // Constant-time comparison to prevent timing attacks on plaintext passwords
+  const a = Buffer.from(plain);
+  const b = Buffer.from(pass);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 // ---------------------------------------------------------------------------
@@ -57,22 +62,35 @@ const RATE_LIMIT_MAX = 5;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * Check whether the IP is currently rate-limited. This function only
+ * *reads* state — call `recordLoginFailure(ip)` after a failed login
+ * to actually increment the counter. This separation ensures that
+ * successful logins never contribute toward a lockout.
+ */
 export function checkRateLimit(
   ip: string,
 ): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= RATE_LIMIT_MAX) {
-      return { allowed: false, retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000) };
-    }
-    entry.count++;
-    return { allowed: true };
+  if (entry && now < entry.resetAt && entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000) };
   }
 
-  rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
   return { allowed: true };
+}
+
+/** Record a failed login attempt for rate-limiting purposes. */
+export function recordLoginFailure(ip: string): void {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (entry && now < entry.resetAt) {
+    entry.count++;
+  } else {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+  }
 }
 
 // Periodic cleanup of stale entries (every 60s)

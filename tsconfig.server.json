@@ -8,11 +8,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "resolveJsonModule": true
   },
-  "include": ["server.ts", "lib/terminal/**/*.ts", "lib/mode.ts", "lib/auth.ts"],
+  "include": ["server.ts"],
   "exclude": ["node_modules"]
 }

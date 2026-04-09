@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyPassword, createSession, checkRateLimit } from "@/lib/auth";
+import { verifyPassword, createSession, checkRateLimit, recordLoginFailure } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: block brute-force attempts
+    // Rate limiting: block brute-force attempts (check only — does not increment)
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip") ??
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
 
     const expectedUser = process.env.HARNESS_HUB_AUTH_USER || "admin";
     if (username !== expectedUser) {
+      recordLoginFailure(ip);
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     const valid = await verifyPassword(password ?? "");
     if (!valid) {
+      recordLoginFailure(ip);
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },

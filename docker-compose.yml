@@ -8,6 +8,7 @@ services:
     environment:
       - HARNESS_HUB_MODE=web
       - CLAUDE_HOME=/data/.claude
-      - HARNESS_HUB_AUTH_USER=admin
-      - HARNESS_HUB_AUTH_PASS=changeme
+      - HARNESS_HUB_AUTH_USER=${HARNESS_HUB_AUTH_USER:-admin}
+      # Generate hash: htpasswd -nbBC 10 "" 'yourpassword' | cut -d: -f2
+      - HARNESS_HUB_AUTH_PASS_HASH=${HARNESS_HUB_AUTH_PASS_HASH:?Set HARNESS_HUB_AUTH_PASS_HASH in .env}
     restart: unless-stopped

@@ -33,10 +33,19 @@ export function middleware(request: NextRequest) {
         );
       }
     }
-    // If neither header is present (e.g. cURL, non-browser API clients),
-    // we fall through to session auth below. This is intentional — blocking
-    // requests without these headers would break CLI/API integrations.
-    // Session cookie auth still protects against unauthenticated access.
+    // If neither header is present AND the request carries a session cookie,
+    // it could be a cross-site form POST with enctype="text/plain" (which
+    // can omit both Origin and Sec-Fetch-Site). Block these to prevent CSRF.
+    // Legitimate headless/CLI callers typically don't carry browser cookies.
+    if (!origin && !secFetchSite) {
+      const hasCookie = request.cookies.has("__hh_session");
+      if (hasCookie) {
+        return NextResponse.json(
+          { error: "CSRF: missing Origin and Sec-Fetch-Site headers" },
+          { status: 403 },
+        );
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
