@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Panel, Group } from "react-resizable-panels";
 import { MarkdownViewer } from "@/components/markdown-viewer";
 import { RefreshButton } from "@/components/refresh-button";
@@ -11,6 +11,7 @@ import { usePolling } from "@/lib/use-polling";
 import { apiFetch } from "@/lib/api-client";
 import { useToastStore } from "@/stores/toast-store";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
+import { VersionDiffView } from "@/components/version-diff-view";
 import { ExternalEditBanner } from "@/components/external-edit-banner";
 import { TrashSection } from "@/components/trash-section";
 import { useVersionHistoryStore } from "@/stores/version-history-store";
@@ -44,7 +45,47 @@ export default function SkillsPage() {
   const [mobileView, setMobileView] = useState<"detail" | "history">("detail");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const pushToast = useToastStore((s) => s.push);
-  const { isHistoryOpen, toggleHistory } = useVersionHistoryStore();
+  const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot, selectedSnapshotId } = useVersionHistoryStore();
+  const [diffData, setDiffData] = useState<{ oldContents: Record<string, string>; newContents: Record<string, string>; oldLabel: string; newLabel: string } | null>(null);
+
+  // Fetch diff data when compareSnapshotId changes
+  useEffect(() => {
+    if (!compareSnapshotId || !selected) {
+      setDiffData(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadDiff() {
+      try {
+        // Fetch the selected snapshot contents
+        const res = await apiFetch(
+          `/api/version-history?action=get&kind=skill&name=${encodeURIComponent(selected!.name)}&id=${encodeURIComponent(compareSnapshotId!)}`
+        );
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+
+        // "Old" = snapshot, "New" = current on-disk content
+        const oldContents = data.contents as Record<string, string>;
+        const newContents: Record<string, string> = {};
+        // Use rawContent as the current version for the primary file
+        const primaryFile = Object.keys(oldContents)[0] ?? "SKILL.md";
+        newContents[primaryFile] = selected!.rawContent;
+
+        if (!cancelled) {
+          setDiffData({
+            oldContents,
+            newContents,
+            oldLabel: `v${data.snapshot.id.slice(0, 8)} · ${new Date(data.snapshot.createdAt).toLocaleString()}`,
+            newLabel: "Current",
+          });
+        }
+      } catch {
+        if (!cancelled) setDiffData(null);
+      }
+    }
+    loadDiff();
+    return () => { cancelled = true; };
+  }, [compareSnapshotId, selected]);
 
   const fetchSkills = () => {
     apiFetch("/api/skills").then((r) => r.json()).then(setSkills);
@@ -389,7 +430,22 @@ export default function SkillsPage() {
                               />
                             </div>
                           )}
-                          <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={saveSkill} />
+                          {diffData ? (
+                            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Comparing versions</span>
+                                <button
+                                  onClick={() => setCompareSnapshot(null)}
+                                  className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                >
+                                  Close diff
+                                </button>
+                              </div>
+                              <VersionDiffView {...diffData} />
+                            </div>
+                          ) : (
+                            <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={saveSkill} />
+                          )}
                         </div>
                       </Panel>
                       <ResizeHandle />

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
+import { VersionDiffView } from "@/components/version-diff-view";
 import { TrashSection } from "@/components/trash-section";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
@@ -208,7 +209,41 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
-  const { isHistoryOpen, toggleHistory } = useVersionHistoryStore();
+  const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot } = useVersionHistoryStore();
+  const [diffData, setDiffData] = useState<{ oldContents: Record<string, string>; newContents: Record<string, string>; oldLabel: string; newLabel: string } | null>(null);
+
+  useEffect(() => {
+    if (!compareSnapshotId || !selected) {
+      setDiffData(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadDiff() {
+      try {
+        const res = await apiFetch(
+          `/api/version-history?action=get&kind=agent&name=${encodeURIComponent(selected!.name)}&id=${encodeURIComponent(compareSnapshotId!)}`
+        );
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const oldContents = data.contents as Record<string, string>;
+        const newContents: Record<string, string> = {};
+        const primaryFile = Object.keys(oldContents)[0] ?? `${selected!.name}.md`;
+        newContents[primaryFile] = rawContent ?? content ?? "";
+        if (!cancelled) {
+          setDiffData({
+            oldContents,
+            newContents,
+            oldLabel: `v${data.snapshot.id.slice(0, 8)} · ${new Date(data.snapshot.createdAt).toLocaleString()}`,
+            newLabel: "Current",
+          });
+        }
+      } catch {
+        if (!cancelled) setDiffData(null);
+      }
+    }
+    loadDiff();
+    return () => { cancelled = true; };
+  }, [compareSnapshotId, selected, rawContent, content]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -372,7 +407,22 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
                 isHistoryOpen ? (
                   <Group id="agents-detail-inner" orientation="horizontal">
                     <Panel id="agents-editor-area" defaultSize={70} minSize={40}>
-                      <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
+                      {diffData ? (
+                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Comparing versions</span>
+                            <button
+                              onClick={() => setCompareSnapshot(null)}
+                              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            >
+                              Close diff
+                            </button>
+                          </div>
+                          <VersionDiffView {...diffData} />
+                        </div>
+                      ) : (
+                        <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
+                      )}
                     </Panel>
                     <ResizeHandle />
                     <Panel id="agents-history-area" defaultSize={30} minSize={20}>
