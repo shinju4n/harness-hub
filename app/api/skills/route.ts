@@ -99,7 +99,26 @@ export async function PUT(request: NextRequest) {
     if (!mdFile) {
       return NextResponse.json({ error: "Skill file not found" }, { status: 404 });
     }
-    await writeFile(path.join(dirPath, mdFile), content, "utf-8");
+
+    const userDataPath = request.headers.get("x-user-data-path");
+    const profileId = request.headers.get("x-profile-id");
+
+    if (userDataPath && profileId && process.env.HARNESS_HUB_VERSION_HISTORY !== "0") {
+      const { writeItem } = await import("@/lib/versioned-write");
+      await writeItem({
+        versionBase: path.join(userDataPath, "versions", profileId),
+        homePath: claudeHome,
+        profileId,
+        kind: "skill",
+        name,
+        fileName: mdFile,
+        content,
+        source: "harness-hub",
+      });
+    } else {
+      await writeFile(path.join(dirPath, mdFile), content, "utf-8");
+    }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

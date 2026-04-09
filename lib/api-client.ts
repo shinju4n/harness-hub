@@ -4,10 +4,22 @@ import { useToastStore } from "@/stores/toast-store";
 export function getApiHeaders(): Record<string, string> {
   const { profiles, activeProfileId } = useAppSettingsStore.getState();
   const profile = profiles.find((p) => p.id === activeProfileId);
+  const headers: Record<string, string> = {};
+
   if (profile && profile.homePath !== "auto") {
-    return { "x-claude-home": profile.homePath };
+    headers["x-claude-home"] = profile.homePath;
   }
-  return {};
+
+  if (activeProfileId) {
+    headers["x-profile-id"] = activeProfileId;
+  }
+
+  const userDataPath = (globalThis as Record<string, unknown>).__harnessHubUserDataPath;
+  if (typeof userDataPath === "string" && userDataPath) {
+    headers["x-user-data-path"] = userDataPath;
+  }
+
+  return headers;
 }
 
 export async function apiFetch(url: string, options?: RequestInit): Promise<Response> {
