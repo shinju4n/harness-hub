@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ResizeHandle } from "@/components/resize-handle";
 import { useConfirm } from "@/components/confirm-dialog";
 import { VersionHistoryPanel } from "@/components/version-history-panel";
-import { VersionDiffView } from "@/components/version-diff-view";
+import { DiffModal } from "@/components/diff-modal";
 import { TrashSection } from "@/components/trash-section";
 import { usePolling } from "@/lib/use-polling";
 import { apiFetch, mutate } from "@/lib/api-client";
@@ -209,8 +209,10 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+  const pushToast = useToastStore((s) => s.push);
   const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot } = useVersionHistoryStore();
   const [diffData, setDiffData] = useState<{ oldContents: Record<string, string>; newContents: Record<string, string>; oldLabel: string; newLabel: string } | null>(null);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     if (!compareSnapshotId || !selected) {
@@ -407,22 +409,7 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
                 isHistoryOpen ? (
                   <Group id="agents-detail-inner" orientation="horizontal">
                     <Panel id="agents-editor-area" defaultSize={70} minSize={40}>
-                      {diffData ? (
-                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Comparing versions</span>
-                            <button
-                              onClick={() => setCompareSnapshot(null)}
-                              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                            >
-                              Close diff
-                            </button>
-                          </div>
-                          <VersionDiffView {...diffData} />
-                        </div>
-                      ) : (
-                        <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
-                      )}
+                      <AgentDetail agent={selected} content={content} rawContent={rawContent ?? content} onSave={onSave} />
                     </Panel>
                     <ResizeHandle />
                     <Panel id="agents-history-area" defaultSize={30} minSize={20}>
@@ -441,6 +428,33 @@ function DefinitionsTab({ agents, selected, content, rawContent, onSelect, onBac
           </Panel>
         </Group>
       </div>
+      <DiffModal
+        open={!!diffData}
+        oldContents={diffData?.oldContents ?? {}}
+        newContents={diffData?.newContents ?? {}}
+        oldLabel={diffData?.oldLabel ?? ""}
+        newLabel={diffData?.newLabel ?? ""}
+        applying={applying}
+        onClose={() => setCompareSnapshot(null)}
+        onApply={async () => {
+          if (!compareSnapshotId || !selected) return;
+          setApplying(true);
+          try {
+            await apiFetch("/api/version-history", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "restore", kind: "agent", name: selected.name, snapshotId: compareSnapshotId }),
+            });
+            setCompareSnapshot(null);
+            pushToast("success", "Version restored");
+            onSelect(selected);
+          } catch {
+            pushToast("error", "Failed to restore version");
+          } finally {
+            setApplying(false);
+          }
+        }}
+      />
     </>
   );
 }
