@@ -124,6 +124,10 @@ export const useAppSettingsStore = create<AppSettingsState>()(
         }));
       },
       removeProfile: (id) => {
+        // Best-effort version history cleanup — fire and forget
+        fetch(`/api/version-history?action=archiveProfile&id=${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        }).catch(() => {});
         set((state) => ({
           profiles: state.profiles.filter((p) => p.id !== id),
           activeProfileId: state.activeProfileId === id ? "default" : state.activeProfileId,
