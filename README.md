@@ -42,6 +42,8 @@
 | **Toast Notifications** | Global success/error/info toasts wired into all mutation call sites | [docs](docs/features/toast-notifications.md) |
 | **Command Palette** | Cmd+K global search across pages, agents, plans, hook scripts, and sessions | [docs](docs/features/command-palette.md) |
 | **Version History** | Browsable, diffable, restorable snapshots of every Skills and Agents edit — from harness-hub, Claude Code, or external tools | [docs](docs/features/version-history.md) |
+| **Web Auth** | Session-based authentication middleware for web mode with CSRF protection and login UI | [docs](docs/features/web-auth.md) |
+| **Self-Hosting** | Docker deployment with WebSocket terminal, environment validation, and session auth | [docs](docs/features/self-hosting.md) |
 
 ### Highlights
 
@@ -77,6 +79,18 @@ pnpm dev
 ```
 
 Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+## Self-Hosting (Docker)
+
+```bash
+git clone https://github.com/shinju4n/harness-hub.git
+cd harness-hub
+docker compose up -d
+```
+
+Open [http://localhost:3000](http://localhost:3000) and log in (default: `admin` / `changeme`).
+
+See [docs/features/self-hosting.md](docs/features/self-hosting.md) for environment variables and configuration.
 
 ## Install from Release
 

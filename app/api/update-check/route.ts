@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import packageJson from "@/package.json";
+import { requireAuth } from "@/lib/auth";
 
 const REPO = "shinju4n/harness-hub";
 const CURRENT_VERSION = packageJson.version;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
       headers: { Accept: "application/vnd.github.v3+json" },

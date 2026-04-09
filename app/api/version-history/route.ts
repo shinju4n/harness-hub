@@ -3,6 +3,7 @@ import path from "path";
 import { rename, mkdir, rm, unlink } from "fs/promises";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { isSafeSegment } from "@/lib/path-validator";
+import { requireAuth } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,6 +32,9 @@ function missing503() {
 // ---------------------------------------------------------------------------
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const { userDataPath, profileId } = getHeaders(request);
   if (!userDataPath || !profileId) return missing503();
 
@@ -115,6 +119,9 @@ export async function GET(request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const { userDataPath, profileId } = getHeaders(request);
   if (!userDataPath || !profileId) return missing503();
 
@@ -269,6 +276,9 @@ export async function POST(request: NextRequest) {
 // ---------------------------------------------------------------------------
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const { userDataPath, profileId } = getHeaders(request);
   if (!userDataPath || !profileId) return missing503();
 

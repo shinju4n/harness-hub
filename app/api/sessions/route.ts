@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readSessions, deleteSession, bulkDeleteSessions } from "@/lib/sessions-ops";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const sessions = await readSessions(claudeHome);
@@ -13,6 +17,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const fileName = request.nextUrl.searchParams.get("file");
@@ -30,6 +37,9 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const body = await request.json() as { olderThanMs?: number | null; dryRun?: boolean };

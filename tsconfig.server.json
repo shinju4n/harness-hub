@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist-server",
+    "noEmit": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["server.ts", "lib/terminal/**/*.ts", "lib/mode.ts", "lib/auth.ts"],
+  "exclude": ["node_modules"]
+}

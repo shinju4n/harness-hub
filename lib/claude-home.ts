@@ -1,6 +1,7 @@
 import { access } from "fs/promises";
 import { statSync, realpathSync } from "fs";
 import path from "path";
+import { isWebMode } from "./mode";
 
 /**
  * Determine whether a user-supplied Claude home path is safe to operate on.
@@ -112,7 +113,12 @@ export function getClaudeHome(override?: string | null): string {
 }
 
 export function getClaudeHomeFromRequest(request: Request): string {
-  const override = request.headers.get("x-claude-home");
+  // In web mode, ignore the x-claude-home header entirely to prevent
+  // remote clients from redirecting file operations outside the
+  // server-configured CLAUDE_HOME (env var only).
+  const override = isWebMode()
+    ? null
+    : request.headers.get("x-claude-home");
   return getClaudeHome(override);
 }
 

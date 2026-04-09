@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { getClaudeHome, getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { loadImageBytes } from "@/lib/images-ops";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const { id } = await ctx.params;
     // <img> tags can't send custom headers, so the gallery page may pass

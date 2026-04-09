@@ -8,6 +8,7 @@ import {
   updateMemoryFile,
   deleteMemoryFile,
 } from "@/lib/memory-ops";
+import { requireAuth } from "@/lib/auth";
 
 // ─── Validation ───
 
@@ -33,6 +34,9 @@ function validateFileName(fileName: string): string | null {
 // ─── GET ───
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHome();
   const params = request.nextUrl.searchParams;
 
@@ -79,6 +83,9 @@ export async function GET(request: NextRequest) {
 // ─── POST ───
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHome();
   const body = await request.json();
   const { project, fileName, name, description, type, body: content } = body;
@@ -112,6 +119,9 @@ export async function POST(request: NextRequest) {
 // ─── PUT ───
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHome();
   const body = await request.json();
   const {
@@ -155,6 +165,9 @@ export async function PUT(request: NextRequest) {
 // ─── DELETE ───
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHome();
   const params = request.nextUrl.searchParams;
 

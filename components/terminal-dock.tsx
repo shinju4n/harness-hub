@@ -7,24 +7,33 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTerminalStore } from "@/stores/terminal-store";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { WsTerminalProvider } from "./ws-terminal-provider";
 
 export function TerminalDock() {
+  const [useWs, setUseWs] = useState(false);
+
+  useEffect(() => {
+    if (!window.electronTerminal) {
+      setUseWs(true);
+    }
+  }, []);
+
+  if (useWs) {
+    return <WsTerminalProvider />;
+  }
+
+  return <ElectronTerminal />;
+}
+
+function ElectronTerminal() {
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
-  // Header label for the resolved cwd. Filled in once the main process
-  // resolves the real path (which depends on the active profile's claude
-  // home and the page segment). Until then we show a placeholder.
-  const [sessionCwd, setSessionCwd] = useState<string>("…");
-
+  const [sessionCwd, setSessionCwd] = useState<string>("...");
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const api = window.electronTerminal;
-    if (!api) {
-      container.innerHTML =
-        '<div class="p-4 text-sm text-gray-500">Terminal is only available in the Electron app.</div>';
-      return;
-    }
+    if (!api) return;
 
     const term = new Terminal({
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", monospace',

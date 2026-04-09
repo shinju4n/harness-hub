@@ -3,6 +3,42 @@ import { getClaudeHome, detectClaudeInstallation } from "../claude-home";
 import os from "os";
 import path from "path";
 
+describe("getClaudeHomeFromRequest (web mode)", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("ignores x-claude-home header in web mode", async () => {
+    vi.stubEnv("HARNESS_HUB_MODE", "web");
+    vi.stubEnv("CLAUDE_HOME", "/srv/claude-data/.claude");
+
+    const { getClaudeHomeFromRequest } = await import("../claude-home");
+
+    const request = new Request("http://localhost:3000/api/test", {
+      headers: { "x-claude-home": "/tmp/evil/.claude" },
+    });
+
+    const result = getClaudeHomeFromRequest(request);
+    expect(result).toBe("/srv/claude-data/.claude");
+  });
+
+  it("respects x-claude-home header in desktop mode", async () => {
+    vi.stubEnv("HARNESS_HUB_MODE", "");
+    vi.stubEnv("HOME", "/Users/test");
+
+    const { getClaudeHomeFromRequest } = await import("../claude-home");
+
+    const overridePath = path.join(os.homedir(), ".claude");
+    const request = new Request("http://localhost:3000/api/test", {
+      headers: { "x-claude-home": overridePath },
+    });
+
+    const result = getClaudeHomeFromRequest(request);
+    expect(result).toBe(overridePath);
+  });
+});
+
 describe("getClaudeHome", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

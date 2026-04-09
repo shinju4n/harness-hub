@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest, detectClaudeInstallation } from "@/lib/claude-home";
 import { readFullConfig } from "@/lib/config-reader";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const installation = await detectClaudeInstallation(claudeHome);

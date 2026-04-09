@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readHistory, listHistoryProjects, deleteHistoryEntry, bulkDeleteHistoryEntries } from "@/lib/history-ops";
+import { requireAuth } from "@/lib/auth";
 
 const MAX_LIMIT = 200;
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const searchParams = request.nextUrl.searchParams;
@@ -27,6 +31,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const body = await request.json();

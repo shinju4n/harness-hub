@@ -3,6 +3,7 @@ import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile, readMarkdownFile } from "@/lib/file-ops";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 async function findClaudeMdPath(claudeHome: string): Promise<{ filePath: string; content: string }> {
   // Try inside claudeHome first
@@ -17,6 +18,9 @@ async function findClaudeMdPath(claudeHome: string): Promise<{ filePath: string;
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const [settings, claudeMd] = await Promise.all([
     readJsonFile(path.join(claudeHome, "settings.json")),
@@ -31,6 +35,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const { type, content } = await request.json();
 

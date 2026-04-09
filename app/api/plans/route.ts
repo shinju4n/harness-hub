@@ -7,8 +7,12 @@ import {
   createPlan,
   deletePlan,
 } from "@/lib/plans-ops";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const name = request.nextUrl.searchParams.get("name");
@@ -33,6 +37,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const { name, content } = await request.json();
@@ -49,6 +56,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const { name, content } = await request.json();
@@ -63,6 +73,9 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const name = request.nextUrl.searchParams.get("name");

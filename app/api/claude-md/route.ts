@@ -6,6 +6,7 @@ import {
   writeClaudeMdScope,
   type ClaudeMdScopeId,
 } from "@/lib/claude-md-scopes";
+import { requireAuth } from "@/lib/auth";
 
 const VALID_SCOPES: ClaudeMdScopeId[] = ["user", "project", "local", "org"];
 
@@ -30,6 +31,9 @@ function parseProjectRoot(value: string | null | undefined): ProjectRootResult {
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const params = request.nextUrl.searchParams;
@@ -53,6 +57,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const { scope, content, projectRoot } = await request.json();

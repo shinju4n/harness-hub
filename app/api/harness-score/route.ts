@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { detectClaudeInstallation, getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { runHarnessScore } from "@/lib/harness-score/runner";
+import { requireAuth } from "@/lib/auth";
 
 // Score depends on live filesystem state — never cache.
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const installation = await detectClaudeInstallation(claudeHome);

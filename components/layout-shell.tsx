@@ -3,6 +3,7 @@
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { useTerminalStore } from "@/stores/terminal-store";
 import { TerminalDockWrapper } from "./terminal-dock-wrapper";
+import { SetupBanner } from "./setup-banner";
 
 /**
  * When the terminal is closed, render a plain container.
@@ -16,6 +17,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   const mainContent = (
     <main className="h-full overflow-y-auto">
+      <SetupBanner />
       <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
         {children}
       </div>

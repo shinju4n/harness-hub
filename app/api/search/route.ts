@@ -6,6 +6,7 @@ import { readSessions } from "@/lib/sessions-ops";
 import { listHookFiles } from "@/lib/hook-files-ops";
 import { readdir } from "fs/promises";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 export type SearchResult = {
   category: "Pages" | "Agents" | "Plans" | "Hook Scripts" | "Sessions" | "History";
@@ -42,6 +43,9 @@ function matches(q: string, ...fields: (string | undefined)[]): boolean {
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const q = (request.nextUrl.searchParams.get("q") ?? "").trim();
 
   if (!q) {

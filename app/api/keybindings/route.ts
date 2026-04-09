@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const result = await readJsonFile<Record<string, unknown>>(
     path.join(claudeHome, "keybindings.json")
@@ -16,6 +20,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const filePath = path.join(claudeHome, "keybindings.json");
   const { keybindings } = await request.json();

@@ -1,0 +1,13 @@
+services:
+  harness-hub:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - "${HOME}/.claude:/data/.claude:rw"
+    environment:
+      - HARNESS_HUB_MODE=web
+      - CLAUDE_HOME=/data/.claude
+      - HARNESS_HUB_AUTH_USER=admin
+      - HARNESS_HUB_AUTH_PASS=changeme
+    restart: unless-stopped

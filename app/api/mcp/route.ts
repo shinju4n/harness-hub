@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 async function findMcpPath(claudeHome: string): Promise<{ filePath: string; data: Record<string, unknown> | null; mtime?: number }> {
   // Try inside claudeHome first, then parent (project-level .claude/)
@@ -15,6 +16,9 @@ async function findMcpPath(claudeHome: string): Promise<{ filePath: string; data
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const { data, mtime } = await findMcpPath(claudeHome);
   const mcpData = data as { mcpServers?: Record<string, { command: string; args?: string[] }> } | null;
@@ -25,6 +29,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const { servers, mtime } = await request.json();
   const { filePath } = await findMcpPath(claudeHome);

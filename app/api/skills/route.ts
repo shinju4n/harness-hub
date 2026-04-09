@@ -3,8 +3,12 @@ import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readMarkdownFile } from "@/lib/file-ops";
 import { readdir, readFile, writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const skillName = request.nextUrl.searchParams.get("name");
   const source = request.nextUrl.searchParams.get("source");
@@ -47,6 +51,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
@@ -65,6 +72,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const name = request.nextUrl.searchParams.get("name");
   if (!name) return NextResponse.json({ error: "name required" }, { status: 400 });
@@ -81,6 +91,9 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const { name, content } = await request.json();
 

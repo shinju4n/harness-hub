@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const [settings, installed] = await Promise.all([
     readJsonFile<Record<string, unknown>>(path.join(claudeHome, "settings.json")),
@@ -20,6 +24,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const settingsPath = path.join(claudeHome, "settings.json");
   const { pluginKey, enabled, mtime } = await request.json();

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import path from "path";
+import { requireAuth } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
+
   const claudeHome = getClaudeHomeFromRequest(request);
   const userDataPath = request.headers.get("x-user-data-path");
   const profileId = request.headers.get("x-profile-id");
