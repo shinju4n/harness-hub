@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { readMarkdownFile } from "@/lib/file-ops";
-import { readdir, writeFile, mkdir, rm } from "fs/promises";
+import { readdir, readFile, writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
 
 export async function GET(request: NextRequest) {
@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
     if (source === "custom") {
       const dirPath = path.join(claudeHome, "skills", skillName);
       const files = await readdir(dirPath).catch(() => []);
-      const mdFile = files.find((f: string) => f.endsWith(".md"));
-      skillPath = mdFile ? path.join(dirPath, mdFile) : path.join(dirPath, "index.md");
+      const mdFiles = files.filter((f: string) => f.endsWith(".md")).sort();
+      const mdFile = mdFiles.includes("SKILL.md") ? "SKILL.md" : mdFiles[0];
+      skillPath = mdFile ? path.join(dirPath, mdFile) : path.join(dirPath, "SKILL.md");
     } else {
       const marketplace = request.nextUrl.searchParams.get("marketplace");
       if (!marketplace || !pluginName) {
@@ -33,7 +34,9 @@ export async function GET(request: NextRequest) {
 
     const result = await readMarkdownFile(skillPath);
     if (result.data) {
-      return NextResponse.json({ content: result.data.content, frontmatter: result.data.frontmatter });
+      let rawContent = "";
+      try { rawContent = await readFile(skillPath, "utf-8"); } catch {}
+      return NextResponse.json({ content: result.data.content, frontmatter: result.data.frontmatter, rawContent });
     }
     return NextResponse.json({ error: "Skill not found" }, { status: 404 });
   }
@@ -91,7 +94,8 @@ export async function PUT(request: NextRequest) {
   const dirPath = path.join(claudeHome, "skills", name);
   try {
     const files = await readdir(dirPath);
-    const mdFile = files.find((f: string) => f.endsWith(".md"));
+    const mdFiles = files.filter((f: string) => f.endsWith(".md")).sort();
+    const mdFile = mdFiles.includes("SKILL.md") ? "SKILL.md" : mdFiles[0];
     if (!mdFile) {
       return NextResponse.json({ error: "Skill file not found" }, { status: 404 });
     }

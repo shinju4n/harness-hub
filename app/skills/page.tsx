@@ -20,6 +20,7 @@ interface SkillItem {
 
 interface SelectedSkill {
   content: string;
+  rawContent: string;
   name: string;
   source: "plugin" | "custom";
   pluginName?: string;
@@ -53,6 +54,7 @@ export default function SkillsPage() {
       const data = await res.json();
       setSelected({
         content: data.content,
+        rawContent: data.rawContent ?? data.content,
         name: skill.name,
         source: skill.source,
         pluginName: skill.pluginName,
@@ -68,7 +70,7 @@ export default function SkillsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: selected.name, content }),
     });
-    setSelected({ ...selected, content });
+    setSelected({ ...selected, content, rawContent: content });
   };
 
   const createSkill = async () => {
@@ -252,7 +254,7 @@ export default function SkillsPage() {
               Back to list
             </button>
             {breadcrumb}
-            <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+            <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
           </div>
         )}
       </div>
@@ -271,7 +273,7 @@ export default function SkillsPage() {
               {selected ? (
                 <>
                   {breadcrumb}
-                  <MarkdownViewer content={selected.content} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+                  <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
                 </>
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
