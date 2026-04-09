@@ -15,6 +15,13 @@ import { DiffModal } from "@/components/diff-modal";
 import { ExternalEditBanner } from "@/components/external-edit-banner";
 import { useVersionHistoryStore } from "@/stores/version-history-store";
 import { useVersionDiff } from "@/lib/use-version-diff";
+import { FileTree } from "@/components/file-tree";
+
+interface FileTreeNode {
+  name: string;
+  type: "file" | "directory";
+  children?: FileTreeNode[];
+}
 
 interface SkillItem {
   name: string;
@@ -31,6 +38,7 @@ interface SelectedSkill {
   pluginName?: string;
   marketplace?: string;
   currentSource?: string;
+  fileTree?: FileTreeNode[];
 }
 
 const skillKey = (s: { name: string; source: string; pluginName?: string; marketplace?: string }) =>
@@ -42,12 +50,18 @@ export default function SkillsPage() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newContent, setNewContent] = useState("");
-  const [mobileView, setMobileView] = useState<"detail" | "history">("detail");
+  const [mobileView, setMobileView] = useState<"detail" | "history" | "refs">("detail");
   const { confirm, dialog: confirmDialog } = useConfirm();
   const pushToast = useToastStore((s) => s.push);
   const { isHistoryOpen, toggleHistory, compareSnapshotId, setCompareSnapshot, selectedSnapshotId } = useVersionHistoryStore();
   const diffData = useVersionDiff("skill", selected?.name, selected?.rawContent, compareSnapshotId);
   const [applying, setApplying] = useState(false);
+
+  // Reference file state
+  const [selectedRefFile, setSelectedRefFile] = useState<string | null>(null);
+  const [refContent, setRefContent] = useState<string | null>(null);
+  const [addingRef, setAddingRef] = useState(false);
+  const [newRefName, setNewRefName] = useState("");
 
   const fetchSkills = () => {
     apiFetch("/api/skills").then((r) => r.json()).then(setSkills);
@@ -70,9 +84,76 @@ export default function SkillsPage() {
         pluginName: skill.pluginName,
         marketplace: skill.marketplace,
         currentSource: data.currentSource,
+        fileTree: data.fileTree,
       });
+      setSelectedRefFile(null);
+      setRefContent(null);
       setMobileView("detail");
     }
+  };
+
+  const viewRefFile = async (filePath: string) => {
+    if (!selected) return;
+    const params = new URLSearchParams({ name: selected.name, source: selected.source, file: filePath });
+    if (selected.pluginName) params.set("plugin", selected.pluginName);
+    if (selected.marketplace) params.set("marketplace", selected.marketplace);
+    const res = await apiFetch(`/api/skills?${params}`);
+    if (res.ok) {
+      const data = await res.json();
+      setSelectedRefFile(filePath);
+      setRefContent(data.content);
+    }
+  };
+
+  const saveRefFile = async (content: string) => {
+    if (!selected || !selectedRefFile) return;
+    const res = await apiFetch("/api/skills", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: selected.name, content, file: selectedRefFile }),
+    });
+    if (res.ok) {
+      setRefContent(content);
+      pushToast("success", `Saved ${selectedRefFile}`);
+    }
+  };
+
+  const addRefFile = async () => {
+    if (!selected || !newRefName.trim()) return;
+    const res = await apiFetch("/api/skills", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: selected.name, content: "", file: newRefName.trim() }),
+    });
+    if (res.ok) {
+      setAddingRef(false);
+      setNewRefName("");
+      pushToast("success", `Created ${newRefName.trim()}`);
+      viewSkill(selected); // reload tree
+    }
+  };
+
+  const deleteRefFile = async (filePath: string) => {
+    if (!selected) return;
+    const ok = await confirm({
+      title: "Delete reference file",
+      message: `"${filePath}" will be deleted. This cannot be undone.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
+    const params = new URLSearchParams({ name: selected.name, file: filePath });
+    const res = await apiFetch(`/api/skills?${params}`, { method: "DELETE" });
+    if (res.ok) {
+      pushToast("success", `Deleted ${filePath}`);
+      if (selectedRefFile === filePath) { setSelectedRefFile(null); setRefContent(null); }
+      viewSkill(selected);
+    }
+  };
+
+  const backToMainFile = () => {
+    setSelectedRefFile(null);
+    setRefContent(null);
   };
 
   const saveSkill = async (content: string) => {
@@ -188,31 +269,79 @@ export default function SkillsPage() {
     </button>
   );
 
+  // Filter fileTree: exclude the main SKILL.md (it's shown in the main viewer)
+  const refFiles = (selected?.fileTree ?? []).filter(
+    (n) => !(n.type === "file" && n.name === "SKILL.md")
+  );
+
   const skillList = (
     <div className="space-y-1">
       <div className="mb-3">
         <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">Custom</h3>
-        {customSkills.map((s) => (
-          <div key={s.name} className="flex items-center gap-1 group">
-            <button
-              onClick={() => viewSkill(s)}
-              className={`flex-1 text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
-                selected?.name === s.name
-                  ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-              }`}
-            >
-              {s.name}
-            </button>
-            <button
-              onClick={() => deleteSkill(s.name)}
-              aria-label={`Delete skill ${s.name}`}
-              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+        {customSkills.map((s) => {
+          const isSelected = selected?.name === s.name && selected?.source === "custom";
+          return (
+            <div key={s.name}>
+              <div className="flex items-center gap-1 group">
+                <button
+                  onClick={() => viewSkill(s)}
+                  className={`flex-1 text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
+                    isSelected
+                      ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {s.name}
+                </button>
+                <button
+                  onClick={() => deleteSkill(s.name)}
+                  aria-label={`Delete skill ${s.name}`}
+                  className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 shrink-0 text-xs text-red-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-colors px-1.5 py-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+                >
+                  Delete
+                </button>
+              </div>
+              {/* Inline file tree below selected skill */}
+              {isSelected && (
+                <div className="ml-5 pl-3 border-l-2 border-amber-200 dark:border-amber-800 mt-1 mb-2">
+                  <FileTree
+                    nodes={refFiles}
+                    selectedFile={selectedRefFile}
+                    onSelect={viewRefFile}
+                    onDelete={deleteRefFile}
+                    onAdd={() => setAddingRef(true)}
+                    emptyText="No reference files"
+                  />
+                  {refFiles.length === 0 && !addingRef && (
+                    <button
+                      onClick={() => setAddingRef(true)}
+                      className="mt-1 text-[11px] text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                    >
+                      + Add reference file
+                    </button>
+                  )}
+                  {addingRef && (
+                    <div className="mt-1.5 space-y-1.5">
+                      <input
+                        type="text"
+                        placeholder="filename.md"
+                        value={newRefName}
+                        onChange={(e) => setNewRefName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addRefFile()}
+                        className="w-full text-[12px] px-2 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
+                        autoFocus
+                      />
+                      <div className="flex gap-1">
+                        <button onClick={addRefFile} className="px-2 py-1 text-[10px] font-medium rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors">Create</button>
+                        <button onClick={() => { setAddingRef(false); setNewRefName(""); }} className="px-2 py-1 text-[10px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {createForm}
       </div>
       {sortedMarketplaces.map((marketplace) => (
@@ -220,19 +349,29 @@ export default function SkillsPage() {
           <h3 className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5 px-3">{marketplace}</h3>
           {grouped[marketplace].map((s) => {
             const key = skillKey(s);
-            const isSelected = selected ? skillKey(selected) === key : false;
+            const isThisSelected = selected ? skillKey(selected) === key : false;
             return (
-              <button
-                key={key}
-                onClick={() => viewSkill(s)}
-                className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
-                  isSelected
-                    ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
-              >
-                {s.name}
-              </button>
+              <div key={key}>
+                <button
+                  onClick={() => viewSkill(s)}
+                  className={`block w-full text-left px-3 py-2 rounded-lg text-[13px] transition-all ${
+                    isThisSelected
+                      ? "bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-medium"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {s.name}
+                </button>
+                {isThisSelected && refFiles.length > 0 && (
+                  <div className="ml-5 pl-3 border-l-2 border-gray-200 dark:border-gray-700 mt-1 mb-2">
+                    <FileTree
+                      nodes={refFiles}
+                      selectedFile={selectedRefFile}
+                      onSelect={viewRefFile}
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -349,7 +488,20 @@ export default function SkillsPage() {
               </div>
             )}
             {breadcrumb}
-            <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+            {selectedRefFile && refContent !== null ? (
+              <div>
+                <button
+                  onClick={backToMainFile}
+                  className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                  Back to SKILL.md
+                </button>
+                <MarkdownViewer content={refContent} rawContent={refContent} fileName={selectedRefFile} onSave={selected.source === "custom" ? saveRefFile : undefined} />
+              </div>
+            ) : (
+              <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+            )}
           </div>
         )}
       </div>
@@ -366,46 +518,65 @@ export default function SkillsPage() {
           <Panel id="detail" minSize="40%">
             <div className="h-full overflow-y-auto pr-1">
               {selected ? (
-                <>
-                  {detailHeader}
-                  {isHistoryOpen && selected.source === "custom" ? (
-                    <Group id="detail-history-panels" orientation="horizontal" defaultLayout={{ editor: 70, history: 30 }} className="h-[calc(100%-2rem)]">
-                      <Panel id="editor" minSize="40%">
-                        <div className="h-full overflow-y-auto">
-                          {showExternalBanner && (
-                            <div className="mb-3">
-                              <ExternalEditBanner
-                                source={selected.currentSource!}
-                                timestamp={Date.now()}
-                                onViewChanges={() => {}}
-                                onRevert={() => {}}
-                              />
-                            </div>
-                          )}
-                          <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={saveSkill} />
-                        </div>
-                      </Panel>
-                      <ResizeHandle />
-                      <Panel id="history" minSize="20%">
-                        <VersionHistoryPanel kind="skill" name={selected.name} />
-                      </Panel>
-                    </Group>
-                  ) : (
-                    <>
-                      {showExternalBanner && (
-                        <div className="mb-3">
-                          <ExternalEditBanner
-                            source={selected.currentSource!}
-                            timestamp={Date.now()}
-                            onViewChanges={() => {}}
-                            onRevert={() => {}}
-                          />
-                        </div>
-                      )}
-                      <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
-                    </>
-                  )}
-                </>
+                selectedRefFile && refContent !== null ? (
+                  /* Reference file viewer */
+                  <div>
+                    <button
+                      onClick={backToMainFile}
+                      className="mb-3 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                      Back to SKILL.md
+                    </button>
+                    <div className="mb-2 text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <span>{selected.name}</span>
+                      <span className="text-gray-300 dark:text-gray-600">/</span>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">{selectedRefFile}</span>
+                    </div>
+                    <MarkdownViewer content={refContent} rawContent={refContent} fileName={selectedRefFile} onSave={selected.source === "custom" ? saveRefFile : undefined} />
+                  </div>
+                ) : (
+                  <>
+                    {detailHeader}
+                    {isHistoryOpen && selected.source === "custom" ? (
+                      <Group id="detail-history-panels" orientation="horizontal" defaultLayout={{ editor: 70, history: 30 }} className="h-[calc(100%-2rem)]">
+                        <Panel id="editor" minSize="40%">
+                          <div className="h-full overflow-y-auto">
+                            {showExternalBanner && (
+                              <div className="mb-3">
+                                <ExternalEditBanner
+                                  source={selected.currentSource!}
+                                  timestamp={Date.now()}
+                                  onViewChanges={() => {}}
+                                  onRevert={() => {}}
+                                />
+                              </div>
+                            )}
+                            <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={saveSkill} />
+                          </div>
+                        </Panel>
+                        <ResizeHandle />
+                        <Panel id="history" minSize="20%">
+                          <VersionHistoryPanel kind="skill" name={selected.name} />
+                        </Panel>
+                      </Group>
+                    ) : (
+                      <>
+                        {showExternalBanner && (
+                          <div className="mb-3">
+                            <ExternalEditBanner
+                              source={selected.currentSource!}
+                              timestamp={Date.now()}
+                              onViewChanges={() => {}}
+                              onRevert={() => {}}
+                            />
+                          </div>
+                        )}
+                        <MarkdownViewer content={selected.content} rawContent={selected.rawContent} fileName={`${selected.name}.md`} onSave={selected.source === "custom" ? saveSkill : undefined} />
+                      </>
+                    )}
+                  </>
+                )
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
                   Select a skill to view
