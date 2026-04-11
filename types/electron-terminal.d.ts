@@ -12,9 +12,23 @@ export interface ElectronTerminalAPI {
   onExit(cb: (id: string, code: number) => void): () => void;
 }
 
+export interface ElectronUpdaterEvent {
+  type: "checking" | "available" | "not-available" | "progress" | "downloaded" | "error";
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
+export interface ElectronUpdaterAPI {
+  checkForUpdates(): void;
+  quitAndInstall(): void;
+  onEvent(cb: (event: ElectronUpdaterEvent) => void): () => void;
+}
+
 declare global {
   interface Window {
     electronTerminal?: ElectronTerminalAPI;
+    electronUpdater?: ElectronUpdaterAPI;
   }
 }
 

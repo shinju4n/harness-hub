@@ -46,3 +46,34 @@ contextBridge.exposeInMainWorld("electronVersionStore", {
     return () => ipcRenderer.removeListener("window:regain-focus", handler);
   },
 });
+
+contextBridge.exposeInMainWorld("electronUpdater", {
+  checkForUpdates: (): void => {
+    ipcRenderer.send("updater:check");
+  },
+
+  quitAndInstall: (): void => {
+    ipcRenderer.send("updater:quit-and-install");
+  },
+
+  onEvent: (
+    cb: (event: {
+      type: "checking" | "available" | "not-available" | "progress" | "downloaded" | "error";
+      version?: string;
+      percent?: number;
+      message?: string;
+    }) => void,
+  ): (() => void) => {
+    const handler = (
+      _e: unknown,
+      event: {
+        type: "checking" | "available" | "not-available" | "progress" | "downloaded" | "error";
+        version?: string;
+        percent?: number;
+        message?: string;
+      },
+    ) => cb(event);
+    ipcRenderer.on("updater:event", handler);
+    return () => ipcRenderer.removeListener("updater:event", handler);
+  },
+});

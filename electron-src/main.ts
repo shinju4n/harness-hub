@@ -33,7 +33,6 @@ async function startNextServer(): Promise<void> {
       cwd: appPath,
       stdio: "pipe",
       env: { ...process.env, PORT: String(serverPort) },
-      shell: true,
     });
   } else {
     // In production: use standalone server.js
@@ -137,6 +136,10 @@ function handleUpdaterEvent(event: UpdaterEvent): void {
       console.error(`[updater] error: ${event.message}`);
       break;
   }
+  // Forward every updater event to the renderer so the UI can react.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("updater:event", event);
+  }
 }
 
 if (process.platform === "darwin") {
@@ -167,8 +170,8 @@ if (process.platform === "darwin") {
         submenu: [
           { role: "reload" },
           { role: "forceReload" },
-          { role: "toggleDevTools" },
-          { type: "separator" },
+          ...(isDev ? [{ role: "toggleDevTools" as const }] : []),
+          { type: "separator" as const },
           { role: "resetZoom" },
           { role: "zoomIn" },
           { role: "zoomOut" },
@@ -240,6 +243,23 @@ app.whenReady().then(async () => {
 
     ipcMain.handle("version-store:base-path", () => {
       return app.getPath("userData");
+    });
+
+    // Updater IPC: let the renderer trigger a manual check or quit-and-install.
+    ipcMain.on("updater:check", () => {
+      // Re-create the controller so a fresh probe runs without losing
+      // existing downloaded state in a separate instance. The old
+      // controller is stopped first to avoid duplicate timers.
+      updaterController?.stop();
+      updaterController = createUpdaterController({
+        updater: autoUpdater,
+        enabled: app.isPackaged,
+        onEvent: handleUpdaterEvent,
+      });
+      updaterController.start();
+    });
+    ipcMain.on("updater:quit-and-install", () => {
+      updaterController?.quitAndInstall();
     });
 
     // Only check for updates in packaged builds; dev mode has no stable version.

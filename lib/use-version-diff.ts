@@ -19,7 +19,7 @@ export function useVersionDiff(
 
   useEffect(() => {
     if (!compareSnapshotId || !name || !currentContent) {
-      setDiffData(null);
+      setDiffData(null); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
     let cancelled = false;

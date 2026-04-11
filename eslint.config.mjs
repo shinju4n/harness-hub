@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Compiled Electron output — CommonJS emitted from electron-src/
     "electron/**",
     "dist-electron/**",
+    // Compiled server output — CommonJS emitted from server-src/
+    "dist-server/**",
   ]),
 ]);
 

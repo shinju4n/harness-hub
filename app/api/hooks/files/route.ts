@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { getClaudeHomeFromRequest } from "@/lib/claude-home";
 import {
   listHookFiles,
@@ -9,6 +10,8 @@ import {
 } from "@/lib/hook-files-ops";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const name = request.nextUrl.searchParams.get("name");
@@ -33,6 +36,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const { name, content } = await request.json();
@@ -49,6 +54,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const { name, content } = await request.json();
@@ -63,6 +70,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult) return authResult;
   try {
     const claudeHome = getClaudeHomeFromRequest(request);
     const name = request.nextUrl.searchParams.get("name");

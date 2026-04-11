@@ -15,7 +15,7 @@ export function TerminalDock() {
 
   useEffect(() => {
     if (!window.electronTerminal) {
-      setUseWs(true);
+      setUseWs(true); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, []);
 

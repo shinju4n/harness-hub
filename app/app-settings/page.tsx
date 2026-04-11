@@ -50,6 +50,13 @@ export default function AppSettingsPage() {
   const { push: pushToast } = useToastStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
+  const [electronUpdate, setElectronUpdate] = useState<{
+    status: "idle" | "checking" | "available" | "downloading" | "downloaded" | "error";
+    version?: string;
+    percent?: number;
+    message?: string;
+  }>({ status: "idle" });
+  const isElectron = typeof window !== "undefined" && !!window.electronUpdater;
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [editName, setEditName] = useState("");
   const [editPath, setEditPath] = useState("");
@@ -66,6 +73,40 @@ export default function AppSettingsPage() {
 
   // Cleanup state
   const [cleaningUp, setCleaningUp] = useState(false);
+
+  // Subscribe to Electron updater events
+  useEffect(() => {
+    if (!isElectron) return;
+    const unsub = window.electronUpdater!.onEvent((event) => {
+      switch (event.type) {
+        case "checking":
+          setElectronUpdate({ status: "checking" });
+          break;
+        case "available":
+          setElectronUpdate({ status: "downloading", version: event.version });
+          setChecking(false);
+          break;
+        case "not-available":
+          setElectronUpdate({ status: "idle" });
+          setChecking(false);
+          pushToast("info", `Up to date (v${packageJson.version})`);
+          break;
+        case "progress":
+          setElectronUpdate((prev) => ({ ...prev, status: "downloading", percent: event.percent }));
+          break;
+        case "downloaded":
+          setElectronUpdate({ status: "downloaded", version: event.version });
+          setChecking(false);
+          break;
+        case "error":
+          setElectronUpdate({ status: "error", message: event.message });
+          setChecking(false);
+          break;
+      }
+    });
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isElectron, pushToast]);
 
   /**
    * Hotkey recording uses a window-level capture listener while
@@ -175,6 +216,12 @@ export default function AppSettingsPage() {
 
   const checkForUpdates = async () => {
     setChecking(true);
+    if (isElectron) {
+      // Trigger Electron's native auto-updater — events arrive via IPC.
+      setElectronUpdate({ status: "checking" });
+      window.electronUpdater!.checkForUpdates();
+      return; // checking state cleared by the event listener
+    }
     try {
       const res = await fetch("/api/update-check");
       const data = await res.json();
@@ -198,7 +245,7 @@ export default function AppSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-medium text-gray-900 dark:text-gray-100">Updates</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Check for new versions on GitHub</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{isElectron ? "Check and install updates automatically" : "Check for new versions on GitHub"}</p>
             </div>
             <button
               onClick={checkForUpdates}
@@ -208,7 +255,47 @@ export default function AppSettingsPage() {
               {checking ? "Checking..." : "Check now"}
             </button>
           </div>
-          {updateInfo && (
+          {/* Electron in-app update UI */}
+          {isElectron && electronUpdate.status !== "idle" && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              {electronUpdate.status === "checking" && (
+                <p className="text-sm text-gray-500 animate-pulse">Checking for updates...</p>
+              )}
+              {electronUpdate.status === "downloading" && (
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    Downloading v{electronUpdate.version}...
+                  </p>
+                  {electronUpdate.percent != null && (
+                    <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-amber-500 transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(0, electronUpdate.percent ?? 0))}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              {electronUpdate.status === "downloaded" && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    v{electronUpdate.version} ready to install
+                  </p>
+                  <button
+                    onClick={() => window.electronUpdater!.quitAndInstall()}
+                    className="px-4 py-1.5 text-sm font-medium rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                  >
+                    Restart &amp; Install
+                  </button>
+                </div>
+              )}
+              {electronUpdate.status === "error" && (
+                <p className="text-sm text-red-500">{electronUpdate.message}</p>
+              )}
+            </div>
+          )}
+          {/* Web fallback update UI */}
+          {!isElectron && updateInfo && (
             <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
               {updateInfo.error ? (
                 <p className="text-sm text-red-500">{updateInfo.error}</p>
