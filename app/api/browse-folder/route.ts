@@ -29,10 +29,11 @@ export async function GET(request: NextRequest) {
       throw err;
     }
   } else {
-    // Desktop mode: existing behavior — only allow under home directory
-    if (!dir.startsWith(baseDir)) {
+    // Desktop mode: allow browsing up to root (/) but block sensitive system directories.
+    const BLOCKED_PREFIXES = ["/etc", "/private/etc", "/var", "/private/var", "/System", "/sbin", "/usr/sbin", "/dev", "/proc", "/sys", "/boot", "/root"];
+    if (BLOCKED_PREFIXES.some((p) => dir === p || dir.startsWith(p + "/"))) {
       return NextResponse.json(
-        { error: "Access denied: can only browse under home directory" },
+        { error: "Access denied: system directory" },
         { status: 403 }
       );
     }

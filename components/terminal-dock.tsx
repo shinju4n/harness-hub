@@ -7,6 +7,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useTerminalStore } from "@/stores/terminal-store";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
+import { TERMINAL_THEME } from "@/lib/terminal-theme";
 import { WsTerminalProvider } from "./ws-terminal-provider";
 
 export function TerminalDock() {
@@ -38,12 +39,10 @@ function ElectronTerminal() {
     const term = new Terminal({
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, "Cascadia Mono", monospace',
       fontSize: 13,
-      theme: {
-        background: "#0a0a0a",
-        foreground: "#e5e5e5",
-        cursor: "#f59e0b", // amber-500
-      },
+      lineHeight: 1.35,
+      theme: TERMINAL_THEME,
       cursorBlink: true,
+      cursorStyle: "bar",
       scrollback: 5000,
     });
     const fit = new FitAddon();
@@ -127,15 +126,27 @@ function ElectronTerminal() {
 
   return (
     <div className="flex h-full flex-col bg-[#0a0a0a]">
-      <div className="flex items-center justify-between border-b border-gray-800 bg-gray-900 px-3 py-1 text-xs text-gray-400">
-        <span>Terminal · {sessionCwd}</span>
-        <button
-          onClick={() => useTerminalStore.getState().setOpen(false)}
-          className="rounded px-2 py-0.5 hover:bg-gray-800"
-          aria-label="Close terminal"
-        >
-          ×
-        </button>
+      <div className="flex items-center justify-between border-b border-gray-800/80 bg-gradient-to-r from-gray-900 to-gray-900/95 px-3 py-1.5 text-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500/80 shadow-[0_0_4px_rgba(34,197,94,0.4)]" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+              <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+          </div>
+          <span className="text-gray-400 truncate font-mono text-[11px]">{sessionCwd}</span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => useTerminalStore.getState().setOpen(false)}
+            className="rounded-md p-1 text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+            aria-label="Close terminal"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div ref={containerRef} className="flex-1 overflow-hidden p-2" />
     </div>

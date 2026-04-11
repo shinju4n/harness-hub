@@ -46,7 +46,7 @@ interface UpdateInfo {
 }
 
 export default function AppSettingsPage() {
-  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile, theme, setTheme, terminalHotkey, setTerminalHotkey, resetTerminalHotkey, setRecordingHotkey: setRecordingFlag } = useAppSettingsStore();
+  const { pollingEnabled, pollingInterval, navOrder, setPollingEnabled, setPollingInterval, resetNavOrder, profiles, activeProfileId, addProfile, removeProfile, updateProfile, theme, setTheme, terminalHotkey, setTerminalHotkey, resetTerminalHotkey, setRecordingHotkey: setRecordingFlag, sidebarCollapsed, setSidebarCollapsed } = useAppSettingsStore();
   const { push: pushToast } = useToastStore();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
@@ -306,6 +306,30 @@ export default function AppSettingsPage() {
                 {option === "system" ? "System default" : option.charAt(0).toUpperCase() + option.slice(1)}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Sidebar</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {sidebarCollapsed ? "Sidebar hidden — use the hamburger menu to navigate" : "Sidebar always visible on desktop"}
+              </p>
+            </div>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                !sidebarCollapsed ? "bg-amber-500" : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  !sidebarCollapsed ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
         </div>
 

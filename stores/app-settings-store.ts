@@ -85,6 +85,8 @@ interface AppSettingsState {
    * dock toggle and stealing the keystroke. Not persisted.
    */
   isRecordingHotkey: boolean;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   setPollingEnabled: (enabled: boolean) => void;
   setPollingInterval: (seconds: number) => void;
   setNavOrder: (order: string[]) => void;
@@ -113,6 +115,8 @@ export const useAppSettingsStore = create<AppSettingsState>()(
       theme: "system",
       terminalHotkey: DEFAULT_TERMINAL_HOTKEY,
       isRecordingHotkey: false,
+      sidebarCollapsed: false,
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       setPollingEnabled: (enabled) => set({ pollingEnabled: enabled }),
       setPollingInterval: (seconds) => set({ pollingInterval: seconds }),
       setNavOrder: (order) => set({ navOrder: order }),

@@ -2,6 +2,7 @@
 
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { useTerminalStore } from "@/stores/terminal-store";
+import { useAppSettingsStore } from "@/stores/app-settings-store";
 import { TerminalDockWrapper } from "./terminal-dock-wrapper";
 import { SetupBanner } from "./setup-banner";
 
@@ -14,9 +15,10 @@ import { SetupBanner } from "./setup-banner";
  */
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const isOpen = useTerminalStore((s) => s.isOpen);
+  const activeProfileId = useAppSettingsStore((s) => s.activeProfileId);
 
   const mainContent = (
-    <main className="h-full overflow-y-auto">
+    <main key={activeProfileId} className="h-full overflow-y-auto">
       <SetupBanner />
       <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
         {children}

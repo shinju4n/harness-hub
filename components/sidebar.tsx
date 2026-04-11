@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAppSettingsStore, formatHotkey } from "@/stores/app-settings-store";
 import { useUnsavedStore } from "@/stores/unsaved-store";
 import { FolderPicker } from "@/components/folder-picker";
@@ -121,6 +122,7 @@ function ProfileDropdown() {
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
   const [showBrowse, setShowBrowse] = useState(false);
+  const router = useRouter();
   const [switching, setSwitching] = useState(false);
   const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -161,7 +163,11 @@ function ProfileDropdown() {
     setActiveProfile(id);
     setDropdownOpen(false);
     setSwitching(true);
-    setTimeout(() => window.location.reload(), 300);
+    // Dispatch a profile-changed event so polling hooks re-fetch immediately
+    window.dispatchEvent(new CustomEvent("profile-changed", { detail: { profileId: id } }));
+    // Soft refresh via Next.js router — re-runs server components without full reload
+    await router.refresh();
+    setSwitching(false);
   };
 
   const handleAdd = () => {
@@ -189,9 +195,25 @@ function ProfileDropdown() {
         className="w-full text-left px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
       >
         <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Harness Hub</h1>
-            <p className="text-xs text-amber-600 font-medium mt-0.5 truncate" suppressHydrationWarning>{mounted ? activeProfile.name : "\u00A0"}</p>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 512 512" fill="none">
+                <circle cx="256" cy="256" r="120" stroke="white" strokeWidth="28" opacity="0.3"/>
+                <circle cx="256" cy="256" r="44" fill="white"/>
+                <line x1="256" y1="212" x2="256" y2="120" stroke="white" strokeWidth="22" strokeLinecap="round"/>
+                <line x1="256" y1="300" x2="256" y2="392" stroke="white" strokeWidth="22" strokeLinecap="round"/>
+                <line x1="212" y1="256" x2="120" y2="256" stroke="white" strokeWidth="22" strokeLinecap="round"/>
+                <line x1="300" y1="256" x2="392" y2="256" stroke="white" strokeWidth="22" strokeLinecap="round"/>
+                <circle cx="256" cy="108" r="24" fill="white"/>
+                <circle cx="256" cy="404" r="24" fill="white"/>
+                <circle cx="108" cy="256" r="24" fill="white"/>
+                <circle cx="404" cy="256" r="24" fill="white"/>
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 tracking-tight leading-tight">Harness Hub</h1>
+              <p className="text-[11px] text-amber-600 font-medium mt-0.5 truncate leading-tight" suppressHydrationWarning>{mounted ? activeProfile.name : "\u00A0"}</p>
+            </div>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -321,7 +343,7 @@ function ProfileDropdown() {
 export function Sidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { navOrder, setNavOrder } = useAppSettingsStore();
+  const { navOrder, setNavOrder, sidebarCollapsed } = useAppSettingsStore();
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const dragNodeRef = useRef<HTMLElement | null>(null);
@@ -362,7 +384,7 @@ export function Sidebar() {
       {/* Mobile hamburger */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm lg:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        className={`fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${sidebarCollapsed ? "" : "lg:hidden"}`}
         aria-label="Open navigation menu"
         aria-expanded={open}
       >
@@ -374,7 +396,7 @@ export function Sidebar() {
       {/* Overlay */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+          className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 ${sidebarCollapsed ? "" : "lg:hidden"}`}
           onClick={() => setOpen(false)}
         />
       )}
@@ -382,7 +404,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         aria-label="Primary navigation"
-        className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 ease-in-out ${sidebarCollapsed ? "" : "lg:static lg:translate-x-0"} ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
