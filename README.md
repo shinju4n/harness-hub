@@ -16,6 +16,20 @@
 
 ---
 
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="Harness Hub — Dashboard" width="900" />
+</p>
+
+<p align="center">
+  <img src="docs/images/skills.png" alt="Skills viewer with inline markdown preview" width="440" />
+  &nbsp;
+  <img src="docs/images/agents.png" alt="Agent definitions browser" width="440" />
+</p>
+
+<p align="center">
+  <img src="docs/images/claude-md.png" alt="CLAUDE.md editor with live preview" width="900" />
+</p>
+
 ## Features
 
 | Page | Description | Docs |
