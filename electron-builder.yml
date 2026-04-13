@@ -1,5 +1,9 @@
 appId: com.harnesshub.app
 productName: Harness Hub
+# Force artifact filenames without spaces. GitHub's upload API normalizes
+# spaces in `${productName}` differently from the URLs electron-builder writes
+# into latest-mac.yml (dots vs. dashes), which breaks electron-updater with a
+# 404. Hardcoding "Harness-Hub" keeps the actual asset and the yml URL aligned.
 directories:
   output: dist-electron
 asar: true
@@ -44,6 +48,7 @@ extraResources:
     filter:
       - "**/*"
 mac:
+  artifactName: Harness-Hub-${version}-${arch}-mac.${ext}
   target:
     - target: dmg
       arch:
@@ -77,9 +82,12 @@ win:
   electronLanguages:
     - en
     - ko
+dmg:
+  artifactName: Harness-Hub-${version}-${arch}.${ext}
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  artifactName: Harness-Hub-Setup-${version}.${ext}
 publish:
   provider: github
   owner: shinju4n
