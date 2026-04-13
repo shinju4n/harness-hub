@@ -26,6 +26,7 @@ interface AgentDef {
   color?: string;
   effort?: string;
   background?: boolean;
+  skills?: string[];
   body: string;
   scope: "user" | "project";
 }
@@ -468,6 +469,19 @@ function AgentDetail({ agent, content, rawContent, onSave, historyButton }: { ag
             </span>
           )}
         </div>
+        {agent.skills && agent.skills.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mr-1">skills</span>
+            {agent.skills.map((skill) => (
+              <span
+                key={skill}
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900 font-mono"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* System prompt — edit mode shows full raw file (frontmatter + body) */}
