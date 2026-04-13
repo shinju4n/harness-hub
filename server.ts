@@ -1,5 +1,6 @@
 import { createServer, IncomingMessage } from "http";
-import next from "next";
+import { join } from "path";
+import { readFileSync } from "fs";
 import { WebSocketServer, WebSocket } from "ws";
 import { handleWsTerminal } from "./lib/terminal/ws-terminal";
 
@@ -31,13 +32,42 @@ if (isWeb) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2: Next.js app
+// Phase 2: Set __NEXT_PRIVATE_STANDALONE_CONFIG BEFORE requiring next.
+//
+// In standalone mode Next.js tries to set up webpack aliases in config.js
+// (via config-utils.js → loadWebpackHook). Webpack is not included in the
+// standalone output, so require.resolve('next/dist/compiled/webpack/…')
+// throws. Next.js swallows that error ONLY when
+// __NEXT_PRIVATE_STANDALONE_CONFIG is already set in process.env.
+//
+// The actual config JSON is extracted from the Next.js-generated server.js
+// at build time and saved as .next-config.json in the standalone directory.
+// ---------------------------------------------------------------------------
+
+if (!process.env.__NEXT_PRIVATE_STANDALONE_CONFIG) {
+  try {
+    const cfg = readFileSync(join(__dirname, ".next-config.json"), "utf8");
+    process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = cfg;
+  } catch {
+    // Not in standalone mode – ignore (e.g. local `pnpm dev`).
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Next.js app
+//
+// Use require() (not import) so it runs AFTER the env var above is set.
+// A top-level `import next from 'next'` would be hoisted by esbuild and
+// execute before any setup code in this file.
 // ---------------------------------------------------------------------------
 
 const port = parseInt(process.env.PORT || "3000", 10);
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 
-const app = next({ dev: false, hostname, port });
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const nextModule = require("next") as typeof import("next") | { default: typeof import("next") };
+const createNextApp = "default" in nextModule ? nextModule.default : nextModule;
+const app = (createNextApp as typeof import("next").default)({ dev: false, hostname, port });
 const handle = app.getRequestHandler();
 
 // ---------------------------------------------------------------------------
@@ -74,7 +104,7 @@ function validateWsCookie(req: IncomingMessage): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3: HTTP + WebSocket server
+// Phase 4: HTTP + WebSocket server
 // ---------------------------------------------------------------------------
 
 app.prepare().then(() => {
