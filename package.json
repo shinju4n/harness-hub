@@ -21,7 +21,7 @@
     "lint": "eslint",
     "postinstall": "electron-builder install-app-deps",
     "release": "bash scripts/release.sh",
-    "server:build": "tsc -p tsconfig.server.json",
+    "server:build": "esbuild server.ts --bundle --platform=node --target=node22 --external:node-pty --external:next --outfile=dist-server/server.js",
     "start": "next start --hostname 127.0.0.1",
     "test": "vitest",
     "test:run": "vitest run"
@@ -62,6 +62,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "electron": "^41.1.1",
     "electron-builder": "^26.8.1",
+    "esbuild": "^0.27.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "jsdom": "^29.0.1",
