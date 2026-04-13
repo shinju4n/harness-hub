@@ -13,6 +13,14 @@
 - bcrypt 해시 또는 평문 비밀번호 지원
 - robots.txt: 웹 모드에서 크롤링 차단
 
+## 인증 제외 경로
+
+다음 경로는 미들웨어의 세션 검사를 건너뛴다. matcher 설정과 함수 내 조기 반환으로 이중 차단하여 matcher 정규식 drift에도 로그인이 잠기지 않도록 보호한다.
+
+- `/api/auth/login`, `/api/auth/logout` — 로그인 자체가 인증 이후에 동작하면 안 되므로 제외
+- `/api/health` — 컨테이너 헬스 프로브용
+- `/login` — 로그인 페이지 자체
+
 ## 환경 변수
 
 | 변수 | 용도 |
@@ -40,3 +48,4 @@
 | `app/api/auth/logout/route.ts` | 로그아웃 API |
 | `app/robots.ts` | robots.txt 생성 |
 | `lib/__tests__/auth.test.ts` | 인증 유닛 테스트 |
+| `lib/__tests__/middleware.test.ts` | 미들웨어 제외 경로 회귀 테스트 |

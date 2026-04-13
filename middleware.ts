@@ -12,6 +12,14 @@ export function middleware(request: NextRequest) {
   // Auth explicitly disabled
   if (process.env.HARNESS_HUB_AUTH === "none") return NextResponse.next();
 
+  // Login/logout and health probes must bypass auth — the matcher below
+  // is supposed to exclude these, but this guard is defense-in-depth against
+  // matcher regex drift so a misconfigured matcher can never lock users out.
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/api/auth/") || pathname === "/api/health") {
+    return NextResponse.next();
+  }
+
   // -----------------------------------------------------------------------
   // CSRF protection for mutating requests
   // -----------------------------------------------------------------------
@@ -55,8 +63,6 @@ export function middleware(request: NextRequest) {
   const valid = token ? validateSession(token) : false;
 
   if (!valid) {
-    const { pathname } = request.nextUrl;
-
     // API routes → 401
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -74,7 +80,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/:path*",
+    "/api/((?!auth/|health).*)",
     "/((?!_next/static|_next/image|favicon.ico|login|api/auth|api/health).*)",
   ],
 };
