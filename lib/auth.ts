@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { isWebMode } from "@/lib/mode";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +42,7 @@ export async function verifyPassword(plain: string): Promise<boolean> {
   const pass = process.env.HARNESS_HUB_AUTH_PASS;
   if (!pass) return false;
   // Constant-time comparison to prevent timing attacks on plaintext passwords
+  const { timingSafeEqual } = await import("crypto");
   const a = Buffer.from(plain);
   const b = Buffer.from(pass);
   if (a.length !== b.length) return false;

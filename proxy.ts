@@ -5,7 +5,7 @@ function isWebMode(): boolean {
   return process.env.HARNESS_HUB_MODE === "web";
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Desktop mode — pass through everything
   if (!isWebMode()) return NextResponse.next();
 
