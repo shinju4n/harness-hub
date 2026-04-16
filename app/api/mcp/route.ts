@@ -4,6 +4,15 @@ import { readJsonFile, writeJsonFile } from "@/lib/file-ops";
 import path from "path";
 import { requireAuth } from "@/lib/auth";
 
+type McpServerConfig = {
+  type?: "stdio" | "http" | "sse";
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+};
+
 async function findMcpPath(claudeHome: string): Promise<{ filePath: string; data: Record<string, unknown> | null; mtime?: number }> {
   // Try inside claudeHome first, then parent (project-level .claude/)
   const inside = await readJsonFile<Record<string, unknown>>(path.join(claudeHome, ".mcp.json"));
@@ -20,11 +29,12 @@ export async function GET(request: NextRequest) {
   if (authResult) return authResult;
 
   const claudeHome = getClaudeHomeFromRequest(request);
-  const { data, mtime } = await findMcpPath(claudeHome);
-  const mcpData = data as { mcpServers?: Record<string, { command: string; args?: string[] }> } | null;
+  const { data, mtime, filePath } = await findMcpPath(claudeHome);
+  const mcpData = data as { mcpServers?: Record<string, McpServerConfig> } | null;
   return NextResponse.json({
     servers: mcpData?.mcpServers ?? {},
     mtime,
+    filePath,
   });
 }
 
