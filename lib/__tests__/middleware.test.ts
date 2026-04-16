@@ -11,7 +11,7 @@ describe("middleware", () => {
   });
 
   async function load() {
-    const { middleware } = await import("../../middleware");
+    const { proxy: middleware } = await import("../../proxy");
     const { NextRequest } = await import("next/server");
     return { middleware, NextRequest };
   }

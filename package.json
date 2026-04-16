@@ -23,8 +23,8 @@
     "release": "bash scripts/release.sh",
     "server:build": "esbuild server.ts --bundle --platform=node --target=node22 --external:node-pty --external:next --outfile=dist-server/server.js",
     "start": "next start --hostname 127.0.0.1",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "test": "vitest -c vitest.config.node.mts",
+    "test:run": "vitest run -c vitest.config.node.mts"
   },
   "dependencies": {
     "@codemirror/lang-javascript": "^6.2.5",

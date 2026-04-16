@@ -2,19 +2,31 @@ import { createServer } from "net";
 import http from "http";
 
 export function findAvailablePort(startPort: number): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.listen(startPort, "127.0.0.1", () => {
-      server.close(() => resolve(startPort));
+  const maxPort = Math.min(65535, startPort + 99);
+
+  const tryPort = (port: number): Promise<number> =>
+    new Promise((resolve, reject) => {
+      const server = createServer();
+      server.once("error", (err) => {
+        server.close();
+        if (port < maxPort) {
+          resolve(tryPort(port + 1));
+          return;
+        }
+        reject(err);
+      });
+      server.listen(port, "127.0.0.1", () => {
+        server.close((closeErr) => {
+          if (closeErr) {
+            reject(closeErr);
+            return;
+          }
+          resolve(port);
+        });
+      });
     });
-    server.on("error", () => {
-      if (startPort < startPort + 100) {
-        resolve(findAvailablePort(startPort + 1));
-      } else {
-        reject(new Error("No available port found"));
-      }
-    });
-  });
+
+  return tryPort(startPort);
 }
 
 export function waitForServer(url: string, timeoutMs: number): Promise<void> {

@@ -8,7 +8,13 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["stores/**/*.test.ts", "stores/**/*.test.tsx", "**/*.test.tsx"],
+    include: [
+      "lib/**/*.test.ts",
+      "electron-src/__tests__/**/*.test.ts",
+      "stores/**/*.test.ts",
+      "stores/**/*.test.tsx",
+      "**/*.test.tsx",
+    ],
   },
   resolve: {
     alias: {

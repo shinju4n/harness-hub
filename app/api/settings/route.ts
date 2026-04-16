@@ -39,7 +39,7 @@ export async function PUT(request: NextRequest) {
   if (authResult) return authResult;
 
   const claudeHome = getClaudeHomeFromRequest(request);
-  const { type, content } = await request.json();
+  const { type, content, mtime } = await request.json();
 
   if (type === "claude-md") {
     const { filePath } = await findClaudeMdPath(claudeHome);
@@ -49,11 +49,10 @@ export async function PUT(request: NextRequest) {
 
   if (type === "settings") {
     const settingsPath = path.join(claudeHome, "settings.json");
-    const current = await readJsonFile(settingsPath);
-    if (!current.mtime) {
-      return NextResponse.json({ error: "Cannot read settings.json" }, { status: 500 });
+    if (typeof mtime !== "number") {
+      return NextResponse.json({ error: "mtime is required" }, { status: 400 });
     }
-    const result = await writeJsonFile(settingsPath, content, current.mtime);
+    const result = await writeJsonFile(settingsPath, content, mtime);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }

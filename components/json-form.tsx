@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface JsonFormProps {
   data: Record<string, unknown>;
   readOnlyKeys?: string[];
-  onSave: (data: Record<string, unknown>) => void;
+  onSave: (data: Record<string, unknown>) => void | Promise<void>;
 }
 
 export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
@@ -17,6 +17,15 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [newValueError, setNewValueError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (isDirty) return;
+    // Sync external refreshes into the local draft only while the form is
+    // clean; once the user has unsaved edits, polling must not overwrite them.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData(data);
+  }, [data, isDirty]);
 
   const updateField = (key: string, value: string) => {
     setFormData((prev) => {
@@ -26,6 +35,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
         return { ...prev, [key]: value };
       }
     });
+    setIsDirty(true);
   };
 
   const deleteField = (key: string) => {
@@ -34,6 +44,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
       delete next[key];
       return next;
     });
+    setIsDirty(true);
   };
 
   const startEditObject = (key: string, value: unknown) => {
@@ -48,6 +59,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
       setFormData((prev) => ({ ...prev, [key]: parsed }));
       setEditingKey(null);
       setParseError(null);
+      setIsDirty(true);
     } catch (err) {
       setParseError((err as Error).message);
     }
@@ -75,6 +87,12 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
     setNewValue("");
     setNewValueError(null);
     setAddingKey(false);
+    setIsDirty(true);
+  };
+
+  const handleSave = async () => {
+    await onSave(formData);
+    setIsDirty(false);
   };
 
   return (
@@ -217,7 +235,7 @@ export function JsonForm({ data, readOnlyKeys = [], onSave }: JsonFormProps) {
       )}
 
       <button
-        onClick={() => onSave(formData)}
+        onClick={handleSave}
         className="px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors font-medium"
       >
         Save

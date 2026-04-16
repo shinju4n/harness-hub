@@ -37,7 +37,8 @@ export async function PUT(request: NextRequest) {
   const { filePath } = await findMcpPath(claudeHome);
 
   const current = await readJsonFile(filePath);
-  const result = await writeJsonFile(filePath, { mcpServers: servers }, current.mtime ?? mtime);
+  const expectedMtime = current.mtime ?? mtime;
+  const result = await writeJsonFile(filePath, { mcpServers: servers }, expectedMtime);
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }

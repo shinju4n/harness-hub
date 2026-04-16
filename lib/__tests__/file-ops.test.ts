@@ -45,6 +45,16 @@ describe("file-ops", () => {
       expect(content.data).toEqual({ new: true });
     });
 
+    it("creates a new JSON file when no prior mtime exists", async () => {
+      const filePath = path.join(tmpDir, "new.json");
+
+      const result = await writeJsonFile(filePath, { created: true });
+      expect(result.success).toBe(true);
+
+      const content = await readJsonFile(filePath);
+      expect(content.data).toEqual({ created: true });
+    });
+
     it("rejects write on mtime conflict", async () => {
       const filePath = path.join(tmpDir, "conflict.json");
       await writeFile(filePath, '{"old": true}');

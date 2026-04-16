@@ -30,16 +30,31 @@ export async function readJsonFile<T = unknown>(filePath: string): Promise<JsonR
 export async function writeJsonFile(
   filePath: string,
   data: unknown,
-  expectedMtime: number
+  expectedMtime?: number
 ): Promise<WriteResult> {
   try {
-    const currentStat = await stat(filePath);
-    if (Math.abs(currentStat.mtimeMs - expectedMtime) > 100) {
-      return { success: false, error: "File conflict: file was modified since last read" };
+    let fileExists = true;
+    try {
+      const currentStat = await stat(filePath);
+      if (expectedMtime == null) {
+        return { success: false, error: "File conflict: missing expected modification time" };
+      }
+      if (Math.abs(currentStat.mtimeMs - expectedMtime) > 100) {
+        return { success: false, error: "File conflict: file was modified since last read" };
+      }
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT") throw err;
+      fileExists = false;
+      if (expectedMtime != null) {
+        return { success: false, error: "File conflict: file does not exist anymore" };
+      }
     }
 
-    const backupPath = filePath.replace(/\.json$/, ".backup.json");
-    await copyFile(filePath, backupPath);
+    if (fileExists) {
+      const backupPath = filePath.replace(/\.json$/, ".backup.json");
+      await copyFile(filePath, backupPath);
+    }
 
     const tmpPath = filePath + ".tmp";
     const json = JSON.stringify(data, null, 2) + "\n";

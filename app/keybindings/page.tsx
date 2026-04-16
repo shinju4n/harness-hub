@@ -20,11 +20,14 @@ export default function KeybindingsPage() {
   const { refresh } = usePolling(fetchKeybindings);
 
   const saveKeybindings = async (data: Record<string, unknown>) => {
-    await apiFetch("/api/keybindings", {
+    const res = await apiFetch("/api/keybindings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ keybindings: data }),
     });
+    if (!res.ok) {
+      throw new Error("Failed to save keybindings");
+    }
   };
 
   return (

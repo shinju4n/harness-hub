@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getClaudeHome, getClaudeHomeFromRequest } from "@/lib/claude-home";
 import { loadImageBytes } from "@/lib/images-ops";
 import { requireAuth } from "@/lib/auth";
+import { isWebMode } from "@/lib/mode";
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const authResult = await requireAuth(request);
@@ -16,11 +17,13 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ id: str
     // header-only.
     const headerHome = request.headers.get("x-claude-home");
     const queryHome = request.nextUrl.searchParams.get("home");
-    const claudeHome = headerHome
+    const claudeHome = isWebMode()
       ? getClaudeHomeFromRequest(request)
-      : queryHome
-        ? getClaudeHome(queryHome)
-        : getClaudeHome();
+      : headerHome
+        ? getClaudeHomeFromRequest(request)
+        : queryHome
+          ? getClaudeHome(queryHome)
+          : getClaudeHome();
     const result = await loadImageBytes(claudeHome, id);
     if (!result) {
       return new Response("Image not found", { status: 404 });
