@@ -1,23 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/auth";
+import {
+  detectLocaleFromAcceptLanguage,
+  getLocaleFromPathname,
+  hasLocale,
+  localeCookieName,
+  localizePathname,
+  stripLocaleFromPathname,
+  type Locale,
+} from "@/lib/i18n/config";
 
 function isWebMode(): boolean {
   return process.env.HARNESS_HUB_MODE === "web";
 }
 
+function resolveLocale(request: NextRequest): Locale {
+  const pathnameLocale = getLocaleFromPathname(request.nextUrl.pathname);
+  if (pathnameLocale) return pathnameLocale;
+
+  const cookieLocale = request.cookies.get(localeCookieName)?.value;
+  if (cookieLocale && hasLocale(cookieLocale)) return cookieLocale;
+
+  return detectLocaleFromAcceptLanguage(request.headers.get("accept-language"));
+}
+
+function withLocaleCookie(response: NextResponse, locale: Locale) {
+  response.cookies.set(localeCookieName, locale, {
+    path: "/",
+    sameSite: "lax",
+  });
+  return response;
+}
+
+function isPageRequest(pathname: string) {
+  if (pathname.startsWith("/api/")) return false;
+  if (pathname.startsWith("/_next/")) return false;
+  if (pathname === "/favicon.ico") return false;
+  return !/\.[^/]+$/.test(pathname);
+}
+
+function isLoginPath(pathname: string) {
+  return stripLocaleFromPathname(pathname) === "/login";
+}
+
 export function proxy(request: NextRequest) {
-  // Desktop mode — pass through everything
-  if (!isWebMode()) return NextResponse.next();
+  const { pathname } = request.nextUrl;
+  const locale = resolveLocale(request);
+
+  if (isPageRequest(pathname) && !getLocaleFromPathname(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = localizePathname(pathname, locale);
+    return withLocaleCookie(NextResponse.redirect(redirectUrl), locale);
+  }
+
+  if (!isWebMode()) {
+    return withLocaleCookie(NextResponse.next(), locale);
+  }
 
   // Auth explicitly disabled
-  if (process.env.HARNESS_HUB_AUTH === "none") return NextResponse.next();
+  if (process.env.HARNESS_HUB_AUTH === "none") {
+    return withLocaleCookie(NextResponse.next(), locale);
+  }
 
   // Login/logout and health probes must bypass auth — the matcher below
   // is supposed to exclude these, but this guard is defense-in-depth against
   // matcher regex drift so a misconfigured matcher can never lock users out.
-  const { pathname } = request.nextUrl;
-  if (pathname.startsWith("/api/auth/") || pathname === "/api/health") {
-    return NextResponse.next();
+  if (
+    pathname.startsWith("/api/auth/") ||
+    pathname === "/api/health" ||
+    isLoginPath(pathname)
+  ) {
+    return withLocaleCookie(NextResponse.next(), locale);
   }
 
   // -----------------------------------------------------------------------
@@ -70,17 +123,17 @@ export function proxy(request: NextRequest) {
 
     // Pages → redirect to /login
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    loginUrl.pathname = localizePathname("/login", locale);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return withLocaleCookie(NextResponse.next(), locale);
 }
 
 export const config = {
   matcher: [
     "/api/((?!auth/|health).*)",
-    "/((?!_next/static|_next/image|favicon.ico|login|api/auth|api/health).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|api/health).*)",
   ],
 };

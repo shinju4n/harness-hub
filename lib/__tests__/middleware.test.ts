@@ -37,6 +37,16 @@ describe("middleware", () => {
       // NextResponse.next() has no status override → treated as pass-through
       expect(res.status).toBe(200);
     });
+
+    it("redirects non-localized pages to the default locale", async () => {
+      vi.stubEnv("HARNESS_HUB_MODE", "desktop");
+      const { middleware, NextRequest } = await load();
+
+      const res = middleware(makeReq(NextRequest, "http://localhost/login"));
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost/en/login");
+    });
   });
 
   describe("web mode — unauthenticated", () => {
@@ -77,6 +87,21 @@ describe("middleware", () => {
       const { middleware, NextRequest } = await load();
       const res = middleware(makeReq(NextRequest, "http://localhost/api/agents"));
       expect(res.status).toBe(401);
+    });
+
+    it("redirects / to a locale-specific route before auth", async () => {
+      const { middleware, NextRequest } = await load();
+      const res = middleware(makeReq(NextRequest, "http://localhost/"));
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost/en");
+    });
+
+    it("lets localized login pages through without a session", async () => {
+      const { middleware, NextRequest } = await load();
+      const res = middleware(makeReq(NextRequest, "http://localhost/ko/login"));
+
+      expect(res.status).toBe(200);
     });
   });
 

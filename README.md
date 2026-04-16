@@ -12,6 +12,8 @@
   <a href="#getting-started">Getting Started</a> &nbsp;&bull;&nbsp;
   <a href="#building">Building</a> &nbsp;&bull;&nbsp;
   <a href="#tech-stack">Tech Stack</a>
+  <br />
+  <a href="./README.ko.md">한국어 README</a>
 </p>
 
 ---

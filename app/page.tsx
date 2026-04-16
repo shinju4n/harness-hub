@@ -12,6 +12,11 @@ import {
   formatHotkey,
 } from "@/stores/app-settings-store";
 import { useTerminalStore } from "@/stores/terminal-store";
+import {
+  formatI18nText,
+  useDictionary,
+  useLocalizedPathname,
+} from "@/components/i18n-provider";
 
 const icons = {
   plugins: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M15.5 2H18a2 2 0 0 1 2 2v2.5M9 2H6a2 2 0 0 0-2 2v3a2 2 0 0 1-2 2v2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 2h3a2 2 0 0 1 2 2v0a2 2 0 0 1 2-2h3a2 2 0 0 0 2-2v-3a2 2 0 0 1 2-2v-2a2 2 0 0 1-2-2V4a2 2 0 0 0-2-2h-2.5a2 2 0 0 1-2 2v0a2 2 0 0 1-2-2"/></svg>,
@@ -37,6 +42,8 @@ const icons = {
  * palette listener itself is hard-coded.
  */
 function ShortcutsPanel() {
+  const dictionary = useDictionary();
+  const appSettingsHref = useLocalizedPathname("/app-settings");
   const hotkey = useAppSettingsStore((s) => s.terminalHotkey);
   const toggleTerminal = useTerminalStore((s) => s.toggle);
   const hotkeyLabel = formatHotkey(hotkey);
@@ -57,17 +64,17 @@ function ShortcutsPanel() {
               <path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/>
               <path d="M8 16h8"/>
             </svg>
-            Quick shortcuts
+            {dictionary.dashboard.quickShortcutsTitle}
           </h3>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Pop a terminal anywhere in the app, or jump to anything by name.
+            {dictionary.dashboard.quickShortcutsDescription}
           </p>
         </div>
         <Link
-          href="/app-settings"
+          href={appSettingsHref}
           className="shrink-0 text-[11px] text-amber-600 dark:text-amber-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
         >
-          Customize →
+          {dictionary.dashboard.customize} →
         </Link>
       </div>
 
@@ -86,15 +93,14 @@ function ShortcutsPanel() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                Toggle terminal
+                {dictionary.dashboard.toggleTerminal}
               </span>
               <kbd className="shrink-0 inline-flex items-center text-[10px] font-mono text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5">
                 {hotkeyLabel}
               </kbd>
             </div>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-              Slide-up dock with a real shell. Click the badge or press the
-              shortcut from any page.
+              {dictionary.dashboard.toggleTerminalDescription}
             </p>
           </div>
         </button>
@@ -109,15 +115,14 @@ function ShortcutsPanel() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                Command palette
+                {dictionary.dashboard.commandPalette}
               </span>
               <kbd className="shrink-0 inline-flex items-center text-[10px] font-mono text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded px-1.5 py-0.5">
                 ⌘K
               </kbd>
             </div>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-              Search across pages, agents, plans, hook scripts, sessions, and
-              history.
+              {dictionary.dashboard.commandPaletteDescription}
             </p>
           </div>
         </div>
@@ -127,6 +132,18 @@ function ShortcutsPanel() {
 }
 
 export default function DashboardPage() {
+  const dictionary = useDictionary();
+  const pluginsHref = useLocalizedPathname("/plugins");
+  const skillsHref = useLocalizedPathname("/skills");
+  const commandsHref = useLocalizedPathname("/commands");
+  const hooksHref = useLocalizedPathname("/hooks");
+  const mcpHref = useLocalizedPathname("/mcp");
+  const agentsHref = useLocalizedPathname("/agents");
+  const rulesHref = useLocalizedPathname("/rules");
+  const sessionsHref = useLocalizedPathname("/sessions");
+  const plansHref = useLocalizedPathname("/plans");
+  const memoryHref = useLocalizedPathname("/memory");
+  const claudeMdHref = useLocalizedPathname("/claude-md");
   const { config, loading, error, fetchConfig } = useConfigStore();
   const { pollingEnabled } = useAppSettingsStore();
   const { refresh } = usePolling(fetchConfig);
@@ -141,7 +158,7 @@ export default function DashboardPage() {
         role="alert"
         className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950 p-6 text-red-600 dark:text-red-400 text-sm"
       >
-        <p className="font-medium">Failed to load configuration</p>
+        <p className="font-medium">{dictionary.dashboard.configLoadFailed}</p>
         <p className="mt-1 text-red-500">{error}</p>
         <button
           type="button"
@@ -154,7 +171,7 @@ export default function DashboardPage() {
             <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
             <path d="M8 16H3v5"/>
           </svg>
-          Try again
+          {dictionary.dashboard.tryAgain}
         </button>
       </div>
     );
@@ -170,11 +187,11 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Overview of your Claude Code harness
+            {dictionary.dashboard.subtitle}
             {pollingEnabled && (
               <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-500">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" aria-hidden="true" />
-                Live
+                {dictionary.dashboard.live}
               </span>
             )}
           </p>
@@ -190,78 +207,84 @@ export default function DashboardPage() {
         <SummaryCard
           title="Plugins"
           value={String(c.plugins?.total ?? 0)}
-          subtitle={`${c.plugins?.active ?? 0} active`}
-          href="/plugins"
+          subtitle={formatI18nText(dictionary.dashboard.activeCount, {
+            count: c.plugins?.active ?? 0,
+          })}
+          href={pluginsHref}
           icon={icons.plugins}
           color="amber"
         />
         <SummaryCard
           title="Skills"
           value={String(c.skills?.total ?? 0)}
-          href="/skills"
+          href={skillsHref}
           icon={icons.skills}
           color="purple"
         />
         <SummaryCard
           title="Commands"
           value={String(c.commands?.total ?? 0)}
-          href="/commands"
+          href={commandsHref}
           icon={icons.commands}
           color="green"
         />
         <SummaryCard
           title="Hooks"
           value={String(c.hooks?.total ?? 0)}
-          href="/hooks"
+          href={hooksHref}
           icon={icons.hooks}
           color="blue"
         />
         <SummaryCard
           title="MCP Servers"
           value={String(c.mcpServers?.total ?? 0)}
-          href="/mcp"
+          href={mcpHref}
           icon={icons.mcp}
           color="cyan"
         />
         <SummaryCard
           title="Agents"
           value={String(c.agents?.total ?? 0)}
-          href="/agents"
+          href={agentsHref}
           icon={icons.agents}
           color="orange"
         />
         <SummaryCard
           title="Rules"
           value={String(c.rules?.total ?? 0)}
-          href="/rules"
+          href={rulesHref}
           icon={icons.rules}
           color="rose"
         />
         <SummaryCard
           title="Sessions"
           value={String(c.sessions?.total ?? 0)}
-          href="/sessions"
+          href={sessionsHref}
           icon={icons.sessions}
           color="blue"
         />
         <SummaryCard
           title="Plans"
           value={String(c.plans?.total ?? 0)}
-          href="/plans"
+          href={plansHref}
           icon={icons.plans}
           color="purple"
         />
         <SummaryCard
           title="Memory"
           value={String(c.memory?.total ?? 0)}
-          href="/memory"
+          href={memoryHref}
           icon={icons.memory}
           color="amber"
         />
         <SummaryCard
           title="CLAUDE.md"
-          value={c.claudeMd?.exists ? "Found" : "—"}
-          href="/claude-md"
+          value={
+            c.claudeMd?.exists
+              ? dictionary.dashboard.claudeMdFound
+              : dictionary.dashboard.claudeMdMissing
+          }
+          href={claudeMdHref}
           icon={icons.claudemd}
           color="gray"
         />

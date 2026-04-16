@@ -9,6 +9,15 @@ import { useUnsavedStore } from "@/stores/unsaved-store";
 import { FolderPicker } from "@/components/folder-picker";
 import { LoadingOverlay } from "@/components/loading-overlay";
 import { useConfirm } from "@/components/confirm-dialog";
+import {
+  formatI18nText,
+  useDictionary,
+  useLocale,
+} from "@/components/i18n-provider";
+import {
+  localizePathname,
+  stripLocaleFromPathname,
+} from "@/lib/i18n/config";
 
 const DEFAULT_NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "grid" },
@@ -57,23 +66,25 @@ const icons: Record<string, React.ReactNode> = {
  * immediately.
  */
 function SidebarShortcutsHint() {
+  const dictionary = useDictionary();
   const hotkey = useAppSettingsStore((s) => s.terminalHotkey);
   const terminalLabel = formatHotkey(hotkey);
   return (
     <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
       <span className="flex items-center gap-1">
         <kbd className="font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">⌘K</kbd>
-        <span>search</span>
+        <span>{dictionary.sidebar.shortcutsSearch}</span>
       </span>
       <span className="flex items-center gap-1">
         <kbd className="font-mono bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">{terminalLabel}</kbd>
-        <span>terminal</span>
+        <span>{dictionary.sidebar.shortcutsTerminal}</span>
       </span>
     </div>
   );
 }
 
 function ThemeToggleButton() {
+  const dictionary = useDictionary();
   const { theme, setTheme } = useAppSettingsStore();
 
   const cycleTheme = () => {
@@ -85,8 +96,8 @@ function ThemeToggleButton() {
   return (
     <button
       onClick={cycleTheme}
-      title={`Theme: ${theme} (click to cycle)`}
-      aria-label={`Switch theme (current: ${theme})`}
+      title={formatI18nText(dictionary.sidebar.themeTitle, { theme })}
+      aria-label={formatI18nText(dictionary.sidebar.themeAriaLabel, { theme })}
       className="p-1.5 rounded-md text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
     >
       {theme === "dark" ? (
@@ -114,6 +125,7 @@ function getOrderedItems(navOrder: string[] | null) {
 }
 
 function ProfileDropdown() {
+  const dictionary = useDictionary();
   const { profiles, activeProfileId, setActiveProfile, addProfile, removeProfile, getActiveProfile } = useAppSettingsStore();
   const { hasUnsaved } = useUnsavedStore();
   const { confirm, dialog: confirmDialog } = useConfirm();
@@ -153,9 +165,9 @@ function ProfileDropdown() {
     if (id === activeProfileId) { setDropdownOpen(false); return; }
     if (hasUnsaved()) {
       const ok = await confirm({
-        title: "Unsaved changes will be lost",
-        message: "Switching profiles reloads the app. Save your edits first if you want to keep them.",
-        confirmLabel: "Switch anyway",
+        title: dictionary.sidebar.unsavedTitle,
+        message: dictionary.sidebar.unsavedMessage,
+        confirmLabel: dictionary.sidebar.unsavedConfirm,
         tone: "danger",
       });
       if (!ok) return;
@@ -189,7 +201,7 @@ function ProfileDropdown() {
       {confirmDialog}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        aria-label="Switch profile"
+        aria-label={dictionary.sidebar.switchProfile}
         aria-expanded={dropdownOpen}
         aria-haspopup="menu"
         className="w-full text-left px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset"
@@ -242,7 +254,9 @@ function ProfileDropdown() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200 truncate">{profile.name}</p>
                   <p className="text-[11px] text-gray-400 dark:text-gray-500 font-mono truncate">
-                    {profile.homePath === "auto" ? "~/.claude (auto)" : profile.homePath}
+                    {profile.homePath === "auto"
+                      ? dictionary.sidebar.autoProfileSuffix
+                      : profile.homePath}
                   </p>
                 </div>
                 {profile.id === activeProfileId && (
@@ -254,8 +268,12 @@ function ProfileDropdown() {
                   <button
                     onClick={(e) => handleRemove(e, profile.id)}
                     className="opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-                    title={`Remove profile ${profile.name}`}
-                    aria-label={`Remove profile ${profile.name}`}
+                    title={formatI18nText(dictionary.sidebar.removeProfile, {
+                      name: profile.name,
+                    })}
+                    aria-label={formatI18nText(dictionary.sidebar.removeProfile, {
+                      name: profile.name,
+                    })}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                   </button>
@@ -269,12 +287,12 @@ function ProfileDropdown() {
               <div className="p-3 space-y-2">
                 <input
                   type="text"
-                  placeholder="Profile name"
+                  placeholder={dictionary.sidebar.profileNamePlaceholder}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
                   autoFocus
-                  aria-label="Profile name"
+                  aria-label={dictionary.sidebar.profileNameAriaLabel}
                 />
                 <div className="flex gap-1">
                   <input
@@ -284,13 +302,13 @@ function ProfileDropdown() {
                     onChange={(e) => setNewPath(e.target.value)}
                     className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                    aria-label="Profile path"
+                    aria-label={dictionary.sidebar.profilePathAriaLabel}
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
                     className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                    title="Browse for folder"
-                    aria-label="Browse for folder"
+                    title={dictionary.sidebar.browseFolder}
+                    aria-label={dictionary.sidebar.browseFolder}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                   </button>
@@ -299,7 +317,10 @@ function ProfileDropdown() {
                   <FolderPicker
                     onSelect={(p) => {
                       // Auto-generate name from folder path
-                      const name = newName.trim() || p.split("/").filter(Boolean).pop() || "Profile";
+                      const name =
+                        newName.trim() ||
+                        p.split("/").filter(Boolean).pop() ||
+                        dictionary.sidebar.profileFallbackName;
                       addProfile(name, p);
                       setShowBrowse(false);
                       setShowAddForm(false);
@@ -315,13 +336,13 @@ function ProfileDropdown() {
                     onClick={handleAdd}
                     className="flex-1 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
                   >
-                    Save
+                    {dictionary.sidebar.save}
                   </button>
                   <button
                     onClick={() => { setShowAddForm(false); setNewName(""); setNewPath(""); }}
                     className="flex-1 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                   >
-                    Cancel
+                    {dictionary.sidebar.cancel}
                   </button>
                 </div>
               </div>
@@ -330,7 +351,7 @@ function ProfileDropdown() {
                 onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }}
                 className="w-full px-4 py-2.5 text-[13px] text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors text-left"
               >
-                + Add Profile
+                {dictionary.sidebar.addProfile}
               </button>
             )}
           </div>
@@ -341,7 +362,10 @@ function ProfileDropdown() {
 }
 
 export function Sidebar() {
+  const dictionary = useDictionary();
+  const locale = useLocale();
   const pathname = usePathname();
+  const activePathname = stripLocaleFromPathname(pathname);
   const [open, setOpen] = useState(false);
   const { navOrder, setNavOrder, sidebarCollapsed } = useAppSettingsStore();
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -385,7 +409,7 @@ export function Sidebar() {
       <button
         onClick={() => setOpen(true)}
         className={`fixed top-3 left-3 z-50 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${sidebarCollapsed ? "" : "lg:hidden"}`}
-        aria-label="Open navigation menu"
+        aria-label={dictionary.sidebar.openNavigationMenu}
         aria-expanded={open}
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -403,7 +427,7 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        aria-label="Primary navigation"
+        aria-label={dictionary.sidebar.primaryNavigation}
         className={`fixed inset-y-0 left-0 z-40 w-60 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col transition-transform duration-200 ease-in-out ${sidebarCollapsed ? "" : "lg:static lg:translate-x-0"} ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -412,19 +436,19 @@ export function Sidebar() {
 
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           <p className="px-3 pb-1 text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 select-none">
-            Menu <span className="text-gray-300 dark:text-gray-600 normal-case tracking-normal">· drag to reorder</span>
+            {dictionary.sidebar.menu} <span className="text-gray-300 dark:text-gray-600 normal-case tracking-normal">· {dictionary.sidebar.dragToReorder}</span>
           </p>
           {items.map((item, index) => {
-            const active = pathname === item.href;
+            const active = activePathname === item.href;
             const isOver = overIndex === index && dragIndex !== null && dragIndex !== index;
             const isDragging = dragIndex === index;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={localizePathname(item.href, locale)}
                 draggable
                 aria-current={active ? "page" : undefined}
-                title="Drag to reorder"
+                title={dictionary.sidebar.dragToReorderTitle}
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragEnd={handleDragEnd}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -455,7 +479,7 @@ export function Sidebar() {
         <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
           <SidebarShortcutsHint />
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">Claude Code Harness Manager</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{dictionary.sidebar.appTagline}</span>
             <ThemeToggleButton />
           </div>
         </div>
