@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { MarkdownViewer } from "@/components/markdown-viewer";
+import { MarkdownViewer } from "@/components/markdown-viewer-dynamic";
 import { RefreshButton } from "@/components/refresh-button";
 import { FolderPicker } from "@/components/folder-picker";
 import { usePolling } from "@/lib/use-polling";

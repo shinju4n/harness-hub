@@ -131,9 +131,6 @@ function ProfileDropdown() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newPath, setNewPath] = useState("");
-  const [showBrowse, setShowBrowse] = useState(false);
   const router = useRouter();
   const [switching, setSwitching] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -147,7 +144,7 @@ function ProfileDropdown() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      // Don't close if clicking inside folder picker portal
+      // Don't close if clicking inside folder picker portal.
       const target = e.target as HTMLElement;
       if (target.closest("[data-folder-picker]")) return;
       if (dropdownRef.current && !dropdownRef.current.contains(target)) {
@@ -180,14 +177,6 @@ function ProfileDropdown() {
     // Soft refresh via Next.js router — re-runs server components without full reload
     await router.refresh();
     setSwitching(false);
-  };
-
-  const handleAdd = () => {
-    if (!newName.trim() || !newPath.trim()) return;
-    addProfile(newName.trim(), newPath.trim());
-    setNewName("");
-    setNewPath("");
-    setShowAddForm(false);
   };
 
   const handleRemove = (e: React.MouseEvent, id: string) => {
@@ -284,68 +273,18 @@ function ProfileDropdown() {
 
           <div className="border-t border-gray-100 dark:border-gray-800">
             {showAddForm ? (
-              <div className="p-3 space-y-2">
-                <input
-                  type="text"
-                  placeholder={dictionary.sidebar.profileNamePlaceholder}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
-                  autoFocus
-                  aria-label={dictionary.sidebar.profileNameAriaLabel}
-                />
-                <div className="flex gap-1">
-                  <input
-                    type="text"
-                    placeholder="/absolute/path/.claude"
-                    value={newPath}
-                    onChange={(e) => setNewPath(e.target.value)}
-                    className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
-                    onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-                    aria-label={dictionary.sidebar.profilePathAriaLabel}
-                  />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
-                    className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                    title={dictionary.sidebar.browseFolder}
-                    aria-label={dictionary.sidebar.browseFolder}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
-                  </button>
-                </div>
-                {showBrowse && (
-                  <FolderPicker
-                    onSelect={(p) => {
-                      // Auto-generate name from folder path
-                      const name =
-                        newName.trim() ||
-                        p.split("/").filter(Boolean).pop() ||
-                        dictionary.sidebar.profileFallbackName;
-                      addProfile(name, p);
-                      setShowBrowse(false);
-                      setShowAddForm(false);
-                      setNewName("");
-                      setNewPath("");
-                      setDropdownOpen(false);
-                    }}
-                    onClose={() => setShowBrowse(false)}
-                  />
-                )}
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleAdd}
-                    className="flex-1 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-                  >
-                    {dictionary.sidebar.save}
-                  </button>
-                  <button
-                    onClick={() => { setShowAddForm(false); setNewName(""); setNewPath(""); }}
-                    className="flex-1 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                  >
-                    {dictionary.sidebar.cancel}
-                  </button>
-                </div>
-              </div>
+              <ProfileAddForm
+                onAdd={(name, path) => {
+                  addProfile(name, path);
+                  setShowAddForm(false);
+                }}
+                onPickFolder={(name, path) => {
+                  addProfile(name, path);
+                  setShowAddForm(false);
+                  setDropdownOpen(false);
+                }}
+                onCancel={() => setShowAddForm(false)}
+              />
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }}
@@ -357,6 +296,87 @@ function ProfileDropdown() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ProfileAddForm({
+  onAdd,
+  onPickFolder,
+  onCancel,
+}: {
+  onAdd: (name: string, path: string) => void;
+  onPickFolder: (name: string, path: string) => void;
+  onCancel: () => void;
+}) {
+  const dictionary = useDictionary();
+  const [name, setName] = useState("");
+  const [path, setPath] = useState("");
+  const [showBrowse, setShowBrowse] = useState(false);
+
+  const handleAdd = () => {
+    if (!name.trim() || !path.trim()) return;
+    onAdd(name.trim(), path.trim());
+  };
+
+  return (
+    <div className="p-3 space-y-2">
+      <input
+        type="text"
+        placeholder={dictionary.sidebar.profileNamePlaceholder}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="w-full text-[12px] px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
+        autoFocus
+        aria-label={dictionary.sidebar.profileNameAriaLabel}
+      />
+      <div className="flex gap-1">
+        <input
+          type="text"
+          placeholder="/absolute/path/.claude"
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          className="flex-1 text-[12px] font-mono px-2.5 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20"
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          aria-label={dictionary.sidebar.profilePathAriaLabel}
+        />
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowBrowse(true); }}
+          className="shrink-0 px-2 py-1.5 text-[11px] rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          title={dictionary.sidebar.browseFolder}
+          aria-label={dictionary.sidebar.browseFolder}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+        </button>
+      </div>
+      {showBrowse && (
+        <FolderPicker
+          onSelect={(picked) => {
+            // Auto-generate name from folder basename if user left it blank.
+            const resolvedName =
+              name.trim() ||
+              picked.split("/").filter(Boolean).pop() ||
+              dictionary.sidebar.profileFallbackName;
+            onPickFolder(resolvedName, picked);
+            setShowBrowse(false);
+          }}
+          onClose={() => setShowBrowse(false)}
+        />
+      )}
+      <div className="flex gap-1.5">
+        <button
+          onClick={handleAdd}
+          className="flex-1 py-1 text-xs font-medium rounded-md bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+        >
+          {dictionary.sidebar.save}
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex-1 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        >
+          {dictionary.sidebar.cancel}
+        </button>
+      </div>
     </div>
   );
 }

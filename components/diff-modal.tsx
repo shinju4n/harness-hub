@@ -2,7 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { VersionDiffView } from "@/components/version-diff-view";
+import dynamic from "next/dynamic";
+
+// react-diff-viewer-continued is ~80–120 KB — defer until the modal is
+// first opened. The non-dynamic import would pull the diff engine into
+// every page that merely mounts a DiffModal (even while closed).
+const VersionDiffView = dynamic(
+  () => import("@/components/version-diff-view").then((m) => m.VersionDiffView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-6 text-xs text-gray-400 dark:text-gray-500 animate-pulse">Loading diff…</div>
+    ),
+  },
+);
 
 interface DiffModalProps {
   open: boolean;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MarkdownViewer } from "@/components/markdown-viewer";
+import { MarkdownViewer } from "@/components/markdown-viewer-dynamic";
 import { MEMORY_TYPES, buildMemoryFileContent } from "@/lib/memory-types";
 import type { MemoryFile } from "@/lib/memory-types";
 

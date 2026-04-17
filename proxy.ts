@@ -131,7 +131,7 @@ export function proxy(request: NextRequest) {
   return withLocaleCookie(NextResponse.next(), locale);
 }
 
-export const config = {
+export const proxyConfig = {
   matcher: [
     "/api/((?!auth/|health).*)",
     "/((?!_next/static|_next/image|favicon.ico|api/auth|api/health).*)",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Panel, Group } from "react-resizable-panels";
-import { MarkdownViewer } from "@/components/markdown-viewer";
+import { MarkdownViewer } from "@/components/markdown-viewer-dynamic";
 import { RefreshButton } from "@/components/refresh-button";
 import { ListSkeleton } from "@/components/loading-skeleton";
 import { ResizeHandle } from "@/components/resize-handle";

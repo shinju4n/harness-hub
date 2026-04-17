@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, use } from "react";
 
 import {
   localizePathname,
@@ -32,7 +32,7 @@ export function I18nProvider({
 }
 
 function useI18nContext() {
-  const value = useContext(I18nContext);
+  const value = use(I18nContext);
 
   if (!value) {
     throw new Error("I18nProvider is missing from the tree");
