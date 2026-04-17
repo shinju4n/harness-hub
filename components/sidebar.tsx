@@ -274,14 +274,26 @@ function ProfileDropdown() {
           <div className="border-t border-gray-100 dark:border-gray-800">
             {showAddForm ? (
               <ProfileAddForm
-                onAdd={(name, path) => {
-                  addProfile(name, path);
-                  setShowAddForm(false);
-                }}
-                onPickFolder={(name, path) => {
+                onAdd={async (name, path) => {
                   addProfile(name, path);
                   setShowAddForm(false);
                   setDropdownOpen(false);
+                  // addProfile auto-activates the new profile; mirror the
+                  // side effects of a normal profile switch so polling hooks
+                  // re-fetch and server components see the new homePath.
+                  setSwitching(true);
+                  window.dispatchEvent(new CustomEvent("profile-changed"));
+                  await router.refresh();
+                  setSwitching(false);
+                }}
+                onPickFolder={async (name, path) => {
+                  addProfile(name, path);
+                  setShowAddForm(false);
+                  setDropdownOpen(false);
+                  setSwitching(true);
+                  window.dispatchEvent(new CustomEvent("profile-changed"));
+                  await router.refresh();
+                  setSwitching(false);
                 }}
                 onCancel={() => setShowAddForm(false)}
               />

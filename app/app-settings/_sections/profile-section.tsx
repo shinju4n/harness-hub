@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAppSettingsStore } from "@/stores/app-settings-store";
 import type { Profile } from "@/stores/app-settings-store";
 
 export function ProfileSection() {
+  const router = useRouter();
   const profiles = useAppSettingsStore((s) => s.profiles);
   const activeProfileId = useAppSettingsStore((s) => s.activeProfileId);
   const addProfile = useAppSettingsStore((s) => s.addProfile);
@@ -69,6 +71,10 @@ export function ProfileSection() {
           onAdd={(name, path) => {
             addProfile(name, path);
             setAddingProfile(false);
+            // addProfile auto-activates the new profile; refresh server
+            // components so they read from the new homePath.
+            window.dispatchEvent(new CustomEvent("profile-changed"));
+            router.refresh();
           }}
           onCancel={() => setAddingProfile(false)}
         />

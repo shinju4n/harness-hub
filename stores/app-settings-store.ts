@@ -91,7 +91,13 @@ interface AppSettingsState {
   setPollingInterval: (seconds: number) => void;
   setNavOrder: (order: string[]) => void;
   resetNavOrder: () => void;
-  addProfile: (name: string, homePath: string) => void;
+  /**
+   * Creates a new profile and immediately activates it — creating without
+   * switching leaves the user on the old profile with no visible feedback
+   * that anything happened. Returns the new profile id so callers can fire
+   * any side effects (router.refresh, events) tied to profile activation.
+   */
+  addProfile: (name: string, homePath: string) => string;
   removeProfile: (id: string) => void;
   updateProfile: (id: string, name: string, homePath: string) => void;
   setActiveProfile: (id: string) => void;
@@ -125,7 +131,9 @@ export const useAppSettingsStore = create<AppSettingsState>()(
         const id = `profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         set((state) => ({
           profiles: [...state.profiles, { id, name, homePath }],
+          activeProfileId: id,
         }));
+        return id;
       },
       removeProfile: (id) => {
         // Best-effort version history cleanup — fire and forget
