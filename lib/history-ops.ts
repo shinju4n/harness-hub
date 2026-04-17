@@ -15,6 +15,7 @@ export interface HistoryQuery {
   limit: number;
   offset?: number;
   project?: string;
+  sessionId?: string;
 }
 
 export interface HistoryPage {
@@ -69,6 +70,7 @@ export async function readHistory(claudeHome: string, query: HistoryQuery): Prom
   try {
     for await (const entry of iterateHistory(claudeHome)) {
       if (query.project && entry.project !== query.project) continue;
+      if (query.sessionId && entry.sessionId !== query.sessionId) continue;
       total += 1;
       if (capacity <= 0) continue;
       ring[head] = entry;

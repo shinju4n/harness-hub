@@ -51,6 +51,46 @@ function imageSrc(id: string, homeOverride: string | undefined): string {
   return homeOverride ? `${base}?home=${encodeURIComponent(homeOverride)}` : base;
 }
 
+function HelpBanner() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/30">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left text-sm font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 dark:hover:bg-amber-900/30 rounded-xl transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+            <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+          </svg>
+          What is this page?
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 text-xs text-amber-900/80 dark:text-amber-200/80 space-y-2">
+          <p>
+            Claude Code stores every image you attach in conversations as <strong>base64 inside session JSONL files</strong>{" "}
+            (<code className="text-[10px] bg-amber-100 dark:bg-amber-900/50 px-1 rounded">~/.claude/projects/&lt;project&gt;/&lt;session&gt;.jsonl</code>).
+            This page scans those files and displays all images in one place.
+          </p>
+          <ul className="list-disc pl-4 space-y-1">
+            <li>Click any thumbnail to see it full-size with metadata (project, session, timestamp, size).</li>
+            <li>Use the <strong>project filter</strong> dropdown to narrow down to a specific project.</li>
+            <li>Images are <strong>read-only</strong> — to remove one, edit the source JSONL file directly.</li>
+            <li>Switching profiles automatically loads images from that profile&apos;s home directory.</li>
+          </ul>
+          <p className="text-amber-700/60 dark:text-amber-400/60">
+            This is not part of official Claude Code — it&apos;s a Harness Hub feature that reads existing data.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ImagesPage() {
   const [page, setPage] = useState<ImagePage | null>(null);
   const [projects, setProjects] = useState<ProjectFacet[]>([]);
@@ -194,6 +234,8 @@ export default function ImagesPage() {
         </div>
         <RefreshButton onRefresh={() => { setOffset(0); void load(0, true); }} />
       </div>
+
+      <HelpBanner />
 
       {/* Filter row */}
       <div className="mb-4 flex flex-wrap items-center gap-2">

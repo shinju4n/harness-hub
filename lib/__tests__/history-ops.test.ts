@@ -109,6 +109,31 @@ describe("history-ops", () => {
     expect(result.entries.every((e) => e.project === "/alpha")).toBe(true);
   });
 
+  it("filters by sessionId", async () => {
+    await writeHistory([
+      { display: "a1", timestamp: 1, project: "/a", sessionId: "sess-aaa" },
+      { display: "b1", timestamp: 2, project: "/a", sessionId: "sess-bbb" },
+      { display: "a2", timestamp: 3, project: "/a", sessionId: "sess-aaa" },
+      { display: "b2", timestamp: 4, project: "/b", sessionId: "sess-bbb" },
+    ]);
+    const result = await readHistory(tmpHome, { limit: 10, sessionId: "sess-aaa" });
+    expect(result.total).toBe(2);
+    expect(result.entries.every((e) => e.sessionId === "sess-aaa")).toBe(true);
+    expect(result.entries.map((e) => e.display)).toEqual(["a2", "a1"]);
+  });
+
+  it("filters by both project and sessionId", async () => {
+    await writeHistory([
+      { display: "a1", timestamp: 1, project: "/alpha", sessionId: "sess-1" },
+      { display: "a2", timestamp: 2, project: "/beta", sessionId: "sess-1" },
+      { display: "a3", timestamp: 3, project: "/alpha", sessionId: "sess-2" },
+      { display: "a4", timestamp: 4, project: "/alpha", sessionId: "sess-1" },
+    ]);
+    const result = await readHistory(tmpHome, { limit: 10, project: "/alpha", sessionId: "sess-1" });
+    expect(result.total).toBe(2);
+    expect(result.entries.map((e) => e.display)).toEqual(["a4", "a1"]);
+  });
+
   it("skips malformed JSONL lines", async () => {
     const content =
       JSON.stringify({ display: "ok", timestamp: 1, project: "/a", sessionId: "s" }) +

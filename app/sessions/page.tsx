@@ -275,8 +275,8 @@ export default function SessionsPage() {
                           {hoveredCwd === s.fileName && s.cwd && (
                             <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                               <button
-                                title="View history for this project"
-                                onClick={() => router.push(`/history?project=${encodeURIComponent(s.cwd)}`)}
+                                title="View history for this session"
+                                onClick={() => router.push(`/history?session=${encodeURIComponent(s.sessionId)}`)}
                                 className="p-0.5 rounded text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -299,12 +299,32 @@ export default function SessionsPage() {
                               </button>
                               <button
                                 title="Copy path"
-                                onClick={() => navigator.clipboard.writeText(s.cwd)}
+                                onClick={() => { navigator.clipboard.writeText(s.cwd); pushToast("success", "Path copied"); }}
                                 className="p-0.5 rounded text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                              </button>
+                              <span className="w-px h-3 bg-gray-200 dark:bg-gray-700 mx-0.5" />
+                              <button
+                                title="Copy PID"
+                                onClick={() => { navigator.clipboard.writeText(String(s.pid)); pushToast("success", `PID ${s.pid} copied`); }}
+                                className="p-0.5 rounded text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16" />
+                                </svg>
+                              </button>
+                              <button
+                                title="Copy resume command"
+                                onClick={() => { navigator.clipboard.writeText(`claude --resume ${s.sessionId}`); pushToast("success", "Resume command copied"); }}
+                                className="p-0.5 rounded text-gray-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="4 17 10 11 4 5" />
+                                  <line x1="12" y1="19" x2="20" y2="19" />
                                 </svg>
                               </button>
                             </span>

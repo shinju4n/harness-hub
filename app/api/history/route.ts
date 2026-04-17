@@ -22,8 +22,9 @@ export async function GET(request: NextRequest) {
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(1, rawLimit), MAX_LIMIT) : 50;
     const offset = Math.max(0, Number(searchParams.get("offset") ?? "0") || 0);
     const project = searchParams.get("project") ?? undefined;
+    const sessionId = searchParams.get("session") ?? undefined;
 
-    const page = await readHistory(claudeHome, { limit, offset, project });
+    const page = await readHistory(claudeHome, { limit, offset, project, sessionId });
     return NextResponse.json({ ...page, limit, offset });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

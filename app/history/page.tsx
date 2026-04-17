@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { RefreshButton } from "@/components/refresh-button";
 import { useConfirm } from "@/components/confirm-dialog";
 import { apiFetch } from "@/lib/api-client";
@@ -101,10 +102,22 @@ function BulkDeleteDialog({
 }
 
 export default function HistoryPage() {
+  return (
+    <Suspense>
+      <HistoryPageInner />
+    </Suspense>
+  );
+}
+
+function HistoryPageInner() {
+  const searchParams = useSearchParams();
+  const initialSession = searchParams.get("session") ?? "";
+
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [project, setProject] = useState<string>("");
+  const [sessionFilter, setSessionFilter] = useState<string>(initialSession);
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -119,7 +132,7 @@ export default function HistoryPage() {
   projectRef.current = project;
 
   const fetchPage = useCallback(
-    async (nextOffset: number, nextProject: string) => {
+    async (nextOffset: number, nextProject: string, nextSession?: string) => {
       setLoading(true);
       try {
         const qs = new URLSearchParams({
@@ -127,6 +140,8 @@ export default function HistoryPage() {
           offset: String(nextOffset),
         });
         if (nextProject) qs.set("project", nextProject);
+        const sess = nextSession ?? sessionFilter;
+        if (sess) qs.set("session", sess);
         const res = await apiFetch(`/api/history?${qs.toString()}`);
         if (res.ok) {
           const data = await res.json();
@@ -138,25 +153,36 @@ export default function HistoryPage() {
         setLoading(false);
       }
     },
-    []
+    [sessionFilter]
   );
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch("/api/history?projects=1")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setProjects(d.projects ?? []);
-      });
+    // Fire both initial requests in parallel — projects list is independent
+    // of the first page, so there's no reason to stagger them.
+    Promise.all([
+      apiFetch("/api/history?projects=1").then((r) => r.json()),
+    ]).then(([projectsData]) => {
+      if (cancelled) return;
+      setProjects(projectsData.projects ?? []);
+    });
+    fetchPage(0, projectRef.current);
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleProjectChange = (next: string) => {
     setProject(next);
     setSelected(new Set());
     fetchPage(0, next);
+  };
+
+  const clearSessionFilter = () => {
+    setSessionFilter("");
+    setSelected(new Set());
+    fetchPage(0, project, "");
   };
 
   const deleteEntry = async (entry: HistoryEntry) => {
@@ -185,11 +211,6 @@ export default function HistoryPage() {
       pushToast("error", err.error ?? "Failed to delete entry");
     }
   };
-
-  useEffect(() => {
-    fetchPage(0, projectRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const grouped = useMemo(() => {
     const map = new Map<string, HistoryEntry[]>();
@@ -307,6 +328,21 @@ export default function HistoryPage() {
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+        {sessionFilter && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+              <rect x="2" y="3" width="20" height="14" rx="2" /><path d="m8 21 4-4 4 4" /><path d="M7 8h.01" /><path d="M17 8h.01" />
+            </svg>
+            Session: {sessionFilter.slice(0, 8)}…
+            <button
+              onClick={clearSessionFilter}
+              className="ml-0.5 p-0.5 rounded-full hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"
+              title="Clear session filter"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Sticky selection bar */}
