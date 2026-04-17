@@ -56,6 +56,13 @@ contextBridge.exposeInMainWorld("electronUpdater", {
     ipcRenderer.send("updater:quit-and-install");
   },
 
+  getState: (): Promise<{
+    status: "idle" | "checking" | "available" | "downloading" | "downloaded" | "error";
+    version?: string;
+    percent?: number;
+    message?: string;
+  }> => ipcRenderer.invoke("updater:get-state"),
+
   onEvent: (
     cb: (event: {
       type: "checking" | "available" | "not-available" | "progress" | "downloaded" | "error";

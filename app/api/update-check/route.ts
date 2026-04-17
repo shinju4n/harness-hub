@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import packageJson from "@/package.json";
 import { requireAuth } from "@/lib/auth";
+import { isNewer } from "@/lib/semver";
 
 const REPO = "shinju4n/harness-hub";
 const CURRENT_VERSION = packageJson.version;
@@ -27,12 +28,11 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json();
     const latestVersion = (data.tag_name as string)?.replace(/^v/, "") ?? CURRENT_VERSION;
-    const updateAvailable = latestVersion !== CURRENT_VERSION;
 
     return NextResponse.json({
       currentVersion: CURRENT_VERSION,
       latestVersion,
-      updateAvailable,
+      updateAvailable: isNewer(latestVersion, CURRENT_VERSION),
       releaseUrl: data.html_url,
       releaseNotes: data.body,
       publishedAt: data.published_at,

@@ -1,8 +1,11 @@
 /**
  * Tests for the IPC integration wiring in main.ts:
  *   - handleUpdaterEvent forwards UpdaterEvents to mainWindow.webContents.send
- *   - "updater:check" IPC handler calls controller.stop() then controller.start()
+ *   - "updater:check" IPC handler calls controller.recheck() (NOT stop+start,
+ *     which would wipe the downloaded flag and break Restart & Install)
  *   - "updater:quit-and-install" IPC handler calls controller.quitAndInstall()
+ *   - "updater:get-state" IPC handler returns a snapshot so the renderer can
+ *     rehydrate on mount (startup probe may have fired before the UI mounted)
  *
  * These units are extracted from main.ts as pure functions / thin wrappers so
  * they can be exercised without spinning up a real Electron app.
@@ -62,12 +65,12 @@ function makeHandleUpdaterEvent(
 
 /**
  * Inline re-implementation of the "updater:check" IPC handler from main.ts.
+ * recheck() probes without destroying controller state, so the user's
+ * already-downloaded update survives a manual re-check.
  */
-function makeHandleUpdaterCheck(getController: () => { stop(): void; start(): void } | null) {
+function makeHandleUpdaterCheck(getController: () => { recheck(): void } | null) {
   return function handleUpdaterCheck(): void {
-    const ctrl = getController();
-    ctrl?.stop();
-    ctrl?.start();
+    getController()?.recheck();
   };
 }
 
@@ -78,6 +81,17 @@ function makeHandleQuitAndInstall(getController: () => { quitAndInstall(): void 
   return function handleQuitAndInstall(): void {
     const ctrl = getController();
     ctrl?.quitAndInstall();
+  };
+}
+
+/**
+ * Inline re-implementation of the "updater:get-state" IPC handler.
+ */
+function makeHandleGetState(
+  getController: () => { getState(): { status: string; version?: string } } | null,
+) {
+  return function handleGetState(): { status: string; version?: string } {
+    return getController()?.getState() ?? { status: "idle" };
   };
 }
 
@@ -184,51 +198,78 @@ describe("updater:check IPC handler", () => {
     vi.restoreAllMocks();
   });
 
-  it("calls stop() then start() on the controller", () => {
+  it("calls recheck() on the controller", () => {
     const updater = createFakeUpdater();
     const controller = createUpdaterController({ updater, enabled: true });
-    const stopSpy = vi.spyOn(controller, "stop");
-    const startSpy = vi.spyOn(controller, "start");
+    const recheckSpy = vi.spyOn(controller, "recheck");
 
     const handleCheck = makeHandleUpdaterCheck(() => controller);
     handleCheck();
 
-    expect(stopSpy).toHaveBeenCalledOnce();
-    expect(startSpy).toHaveBeenCalledOnce();
+    expect(recheckSpy).toHaveBeenCalledOnce();
   });
 
-  it("calls stop() before start() so the old interval is cleared first", () => {
-    const updater = createFakeUpdater();
-    const controller = createUpdaterController({ updater, enabled: true });
-    const order: string[] = [];
-    vi.spyOn(controller, "stop").mockImplementation(() => order.push("stop"));
-    vi.spyOn(controller, "start").mockImplementation(() => order.push("start"));
-
-    const handleCheck = makeHandleUpdaterCheck(() => controller);
-    handleCheck();
-
-    expect(order).toEqual(["stop", "start"]);
-  });
-
-  it("triggers a fresh checkForUpdates call after restart", () => {
+  it("triggers a fresh checkForUpdates call", () => {
     const updater = createFakeUpdater();
     const controller = createUpdaterController({ updater, enabled: true });
 
-    // start() is called once during setup below — reset the spy count first.
     controller.start();
     const callsBefore = (updater.checkForUpdates as ReturnType<typeof vi.fn>).mock.calls.length;
 
     const handleCheck = makeHandleUpdaterCheck(() => controller);
-    handleCheck(); // stop + start
+    handleCheck();
 
     const callsAfter = (updater.checkForUpdates as ReturnType<typeof vi.fn>).mock.calls.length;
     expect(callsAfter).toBeGreaterThan(callsBefore);
+  });
+
+  it("does NOT stop() the controller — a downloaded installer must survive the recheck", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    const stopSpy = vi.spyOn(controller, "stop");
+    controller.start();
+    updater.emit("update-downloaded", { version: "5.0.0" });
+
+    const handleCheck = makeHandleUpdaterCheck(() => controller);
+    handleCheck();
+
+    expect(stopSpy).not.toHaveBeenCalled();
+    // The downloaded state must still be intact so Restart & Install works.
+    controller.quitAndInstall();
+    expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
   });
 
   it("does not throw when controller is null", () => {
     const handleCheck = makeHandleUpdaterCheck(() => null);
 
     expect(() => handleCheck()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updater:get-state IPC — snapshot for mount rehydration
+// ---------------------------------------------------------------------------
+
+describe("updater:get-state IPC handler", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the controller's current state", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+    updater.emit("update-downloaded", { version: "1.5.0" });
+
+    const handleGetState = makeHandleGetState(() => controller);
+
+    expect(handleGetState()).toEqual({ status: "downloaded", version: "1.5.0" });
+  });
+
+  it("falls back to idle when no controller exists (e.g. disabled in dev)", () => {
+    const handleGetState = makeHandleGetState(() => null);
+
+    expect(handleGetState()).toEqual({ status: "idle" });
   });
 });
 

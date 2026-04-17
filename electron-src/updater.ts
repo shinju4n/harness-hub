@@ -32,6 +32,21 @@ export type UpdaterEvent =
   | { type: "downloaded"; version: string }
   | { type: "error"; message: string };
 
+export type UpdaterStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "error";
+
+export interface UpdaterState {
+  status: UpdaterStatus;
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 export interface UpdaterControllerOptions {
   updater: UpdaterLike;
   /** When false, the controller becomes a no-op. Use app.isPackaged as the gate. */
@@ -47,7 +62,11 @@ export interface UpdaterControllerOptions {
 export interface UpdaterController {
   start(): void;
   stop(): void;
+  /** Trigger a fresh probe without tearing down wired listeners or losing downloaded state. */
+  recheck(): void;
   quitAndInstall(): void;
+  /** Snapshot of the latest known state — used to rehydrate UI on mount. */
+  getState(): UpdaterState;
 }
 
 const DEFAULT_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -57,18 +76,64 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let wired = false;
-  let downloaded = false;
+  let state: UpdaterState = { status: "idle" };
   // Listener handles captured so stop() can tear them down cleanly and
   // subsequent start() calls do not accumulate duplicates.
   const registeredListeners: Array<{ event: string; listener: (...args: unknown[]) => void }> = [];
 
+  const setState = (next: UpdaterState) => {
+    state = next;
+  };
+
   const emit = (event: UpdaterEvent) => {
+    // Update our internal snapshot BEFORE notifying consumers so that if the
+    // onEvent callback calls getState() synchronously, it sees consistent data.
+    switch (event.type) {
+      case "checking":
+        // Preserve downloaded state across rechecks — the user might click
+        // "Check now" while already holding a downloaded installer. We still
+        // reflect "checking" back to the UI, but the downloaded flag is kept
+        // via the downloadedVersion closure below.
+        setState({ ...state, status: "checking" });
+        break;
+      case "available":
+        setState({ status: "available", version: event.version });
+        break;
+      case "not-available":
+        // If a previous cycle downloaded a newer version, keep that state
+        // rather than pretending we're idle.
+        if (downloadedVersion) {
+          setState({ status: "downloaded", version: downloadedVersion });
+        } else {
+          setState({ status: "idle" });
+        }
+        break;
+      case "progress":
+        setState({
+          status: "downloading",
+          version: state.version,
+          percent: event.percent,
+        });
+        break;
+      case "downloaded":
+        downloadedVersion = event.version;
+        setState({ status: "downloaded", version: event.version });
+        break;
+      case "error":
+        setState({ status: "error", message: event.message });
+        break;
+    }
     try {
       onEvent?.(event);
     } catch {
       // Never let a consumer callback crash the updater.
     }
   };
+
+  // Tracked OUTSIDE the state object so rechecks (which transition state to
+  // "checking") don't wipe it — quitAndInstall() still needs to know whether
+  // a download actually completed.
+  let downloadedVersion: string | null = null;
 
   const subscribe = (event: string, listener: (...args: unknown[]) => void) => {
     updater.on(event, listener);
@@ -90,7 +155,6 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
       emit({ type: "progress", percent: Math.round(raw) });
     });
     subscribe("update-downloaded", (info: unknown) => {
-      downloaded = true;
       const version = extractVersion(info);
       emit({ type: "downloaded", version });
     });
@@ -153,19 +217,27 @@ export function createUpdaterController(opts: UpdaterControllerOptions): Updater
         clearInterval(timer);
         timer = null;
       }
-      // Reset one-shot state so a later start() cannot inherit a stale
-      // `downloaded=true` from a previous cycle and fire quitAndInstall
-      // without a fresh download actually happening.
-      downloaded = false;
+      downloadedVersion = null;
+      setState({ status: "idle" });
       unwireEvents();
+    },
+
+    recheck() {
+      if (!enabled) return;
+      wireEvents();
+      probe();
     },
 
     quitAndInstall() {
       // Only safe after update-downloaded has fired; electron-updater will
       // otherwise throw, and we don't want a misbehaving IPC caller to bring
       // the main process down.
-      if (!downloaded) return;
+      if (!downloadedVersion) return;
       updater.quitAndInstall?.();
+    },
+
+    getState() {
+      return state;
     },
   };
 }

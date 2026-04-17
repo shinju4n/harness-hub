@@ -19,9 +19,17 @@ export interface ElectronUpdaterEvent {
   message?: string;
 }
 
+export interface ElectronUpdaterState {
+  status: "idle" | "checking" | "available" | "downloading" | "downloaded" | "error";
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 export interface ElectronUpdaterAPI {
   checkForUpdates(): void;
   quitAndInstall(): void;
+  getState(): Promise<ElectronUpdaterState>;
   onEvent(cb: (event: ElectronUpdaterEvent) => void): () => void;
 }
 

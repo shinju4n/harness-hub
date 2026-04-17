@@ -276,4 +276,106 @@ describe("createUpdaterController", () => {
 
     expect(updater.checkForUpdates).toHaveBeenCalledTimes(2);
   });
+
+  it("recheck() probes again without tearing down listeners", () => {
+    const updater = createFakeUpdater();
+    const events: UpdaterEvent[] = [];
+    const controller = createUpdaterController({
+      updater,
+      enabled: true,
+      onEvent: (e) => events.push(e),
+    });
+    controller.start();
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(1);
+
+    controller.recheck();
+    expect(updater.checkForUpdates).toHaveBeenCalledTimes(2);
+
+    updater.emit("update-not-available", {});
+    const notAvail = events.filter((e) => e.type === "not-available");
+    expect(notAvail).toHaveLength(1);
+  });
+
+  it("recheck() preserves downloaded state so Restart & Install still works afterwards", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+    updater.emit("update-downloaded", { version: "0.7.0" });
+
+    controller.recheck();
+    // A later not-available event should NOT wipe the downloaded flag —
+    // the renderer must still be able to trigger quitAndInstall.
+    updater.emit("update-not-available", {});
+    controller.quitAndInstall();
+
+    expect(updater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it("recheck() is a no-op when enabled=false", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: false });
+
+    controller.recheck();
+
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  it("getState() returns idle before start", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+
+    expect(controller.getState()).toEqual({ status: "idle" });
+  });
+
+  it("getState() tracks lifecycle transitions", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+
+    updater.emit("checking-for-update");
+    expect(controller.getState().status).toBe("checking");
+
+    updater.emit("update-available", { version: "0.8.0" });
+    expect(controller.getState()).toEqual({ status: "available", version: "0.8.0" });
+
+    updater.emit("download-progress", { percent: 25 });
+    expect(controller.getState()).toEqual({ status: "downloading", version: "0.8.0", percent: 25 });
+
+    updater.emit("update-downloaded", { version: "0.8.0" });
+    expect(controller.getState()).toEqual({ status: "downloaded", version: "0.8.0" });
+  });
+
+  it("getState() after not-available with no prior download shows idle", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+
+    updater.emit("update-not-available", {});
+
+    expect(controller.getState()).toEqual({ status: "idle" });
+  });
+
+  it("getState() preserves downloaded status across a recheck cycle", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+    updater.emit("update-downloaded", { version: "0.9.0" });
+
+    controller.recheck();
+    updater.emit("checking-for-update");
+    updater.emit("update-not-available", {});
+
+    expect(controller.getState()).toEqual({ status: "downloaded", version: "0.9.0" });
+  });
+
+  it("stop() resets state to idle", () => {
+    const updater = createFakeUpdater();
+    const controller = createUpdaterController({ updater, enabled: true });
+    controller.start();
+    updater.emit("update-downloaded", { version: "0.9.0" });
+
+    controller.stop();
+
+    expect(controller.getState()).toEqual({ status: "idle" });
+  });
 });

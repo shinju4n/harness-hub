@@ -246,20 +246,20 @@ app.whenReady().then(async () => {
     });
 
     // Updater IPC: let the renderer trigger a manual check or quit-and-install.
+    // We DON'T recreate the controller here — that would wipe its internal
+    // "downloaded" tracking and silently break a subsequent Restart & Install
+    // click. recheck() just kicks off another probe on the existing instance.
     ipcMain.on("updater:check", () => {
-      // Re-create the controller so a fresh probe runs without losing
-      // existing downloaded state in a separate instance. The old
-      // controller is stopped first to avoid duplicate timers.
-      updaterController?.stop();
-      updaterController = createUpdaterController({
-        updater: autoUpdater,
-        enabled: app.isPackaged,
-        onEvent: handleUpdaterEvent,
-      });
-      updaterController.start();
+      updaterController?.recheck();
     });
     ipcMain.on("updater:quit-and-install", () => {
       updaterController?.quitAndInstall();
+    });
+    // Lets the Settings page rehydrate its UI on mount — the startup probe
+    // may have already fired `available`/`downloaded` before the renderer
+    // subscribed, so without this the user would never see the install button.
+    ipcMain.handle("updater:get-state", () => {
+      return updaterController?.getState() ?? { status: "idle" };
     });
 
     // Only check for updates in packaged builds; dev mode has no stable version.
