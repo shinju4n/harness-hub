@@ -44,3 +44,9 @@ next-env.d.ts
 # Electron
 electron/
 dist-electron/
+
+# Standalone server bundle (pnpm server:build output)
+dist-server/
+
+# Tool workspaces
+.omc/
