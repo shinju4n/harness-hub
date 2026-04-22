@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshButton } from "@/components/refresh-button";
 import { useConfirm } from "@/components/confirm-dialog";
 import { apiFetch } from "@/lib/api-client";
@@ -111,13 +111,19 @@ export default function HistoryPage() {
 
 function HistoryPageInner() {
   const searchParams = useSearchParams();
-  const initialSession = searchParams.get("session") ?? "";
+  const router = useRouter();
+  // URL is the single source of truth for the session filter. Deriving it
+  // from searchParams (rather than seeding a useState on mount) keeps the
+  // filter correct when the user soft-navigates between /history URLs with
+  // different ?session= values — in App Router, same-route navigations
+  // re-render the page without remounting, so useState would retain the
+  // stale initial value.
+  const sessionFilter = searchParams.get("session") ?? "";
 
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [project, setProject] = useState<string>("");
-  const [sessionFilter, setSessionFilter] = useState<string>(initialSession);
   const [projects, setProjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -158,20 +164,23 @@ function HistoryPageInner() {
 
   useEffect(() => {
     let cancelled = false;
-    // Fire both initial requests in parallel — projects list is independent
-    // of the first page, so there's no reason to stagger them.
-    Promise.all([
-      apiFetch("/api/history?projects=1").then((r) => r.json()),
-    ]).then(([projectsData]) => {
-      if (cancelled) return;
-      setProjects(projectsData.projects ?? []);
-    });
-    fetchPage(0, projectRef.current);
+    apiFetch("/api/history?projects=1")
+      .then((r) => r.json())
+      .then((projectsData) => {
+        if (cancelled) return;
+        setProjects(projectsData.projects ?? []);
+      });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-fetch whenever the URL session filter changes (covers both initial
+  // mount and subsequent soft-navigations with a different ?session=).
+  useEffect(() => {
+    setSelected(new Set());
+    fetchPage(0, projectRef.current, sessionFilter);
+  }, [sessionFilter, fetchPage]);
 
   const handleProjectChange = (next: string) => {
     setProject(next);
@@ -180,9 +189,10 @@ function HistoryPageInner() {
   };
 
   const clearSessionFilter = () => {
-    setSessionFilter("");
-    setSelected(new Set());
-    fetchPage(0, project, "");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("session");
+    const query = params.toString();
+    router.replace(query ? `/history?${query}` : "/history");
   };
 
   const deleteEntry = async (entry: HistoryEntry) => {

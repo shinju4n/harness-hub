@@ -17,6 +17,8 @@
 - readline 기반 스트리밍 파싱 (`lib/history-ops.ts`)
 - 프로젝트 드롭다운 필터
 - 세션 ID 필터 (`?session=<sessionId>` 쿼리 파라미터 지원, Sessions 페이지에서 연결)
+  - URL이 single source of truth. Sessions 페이지의 다른 세션으로 이동(soft navigation)해도 필터가 올바르게 갱신된다.
+  - 필터 해제 버튼은 `router.replace`로 `?session=` 파라미터를 URL에서 제거한다.
 - 날짜(일 단위)별 그룹핑 표시
 - 페이지네이션 (기본 50개, 최대 200개)
 - 최신 항목이 먼저 표시 (JSONL의 append-only 특성 이용)
